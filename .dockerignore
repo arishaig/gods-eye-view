@@ -1,0 +1,17 @@
+# Keep credentials, local state and build output out of the image context.
+.git
+node_modules
+dist
+.env
+.env.*
+!.env.example
+.gev-cache
+.gev-logs
+pinokio/ENVIRONMENT
+pinokio/.installed
+screenshots
+qa-shots
+qa-artifacts
+output
+3d-models
+*.log
