@@ -1,4 +1,5 @@
 import { admitSameSiteRequest } from '../../../src/localRequestGate.mjs';
+import { requestView } from './trusted-proxy.js';
 
 /**
  * Cross-site request gate for cost-bearing and log endpoints. Feeds the
@@ -8,17 +9,21 @@ import { admitSameSiteRequest } from '../../../src/localRequestGate.mjs';
  * Refuses cross-site browser requests (foreign or opaque Origin, a
  * Sec-Fetch-Site other than same-origin/none, or reverse-proxy headers) while
  * keeping loopback non-browser tools and the HOST=0.0.0.0 LAN opt-in working.
+ * A request from a proxy named in GEV_TRUSTED_PROXIES is checked against the
+ * protocol and Host the client used instead (see trusted-proxy.js).
  * @param {import('node:http').IncomingMessage} req
  * @param {import('node:http').ServerResponse} res
  * @returns {boolean} True when a 403 was sent.
  */
 export function admitSameSite(req, res) {
+  const view = requestView(req);
   const verdict = admitSameSiteRequest({
-    hostHeader: req.headers?.host,
-    protocol: req.socket?.encrypted ? 'https:' : 'http:',
+    hostHeader: view.hostHeader,
+    protocol: view.protocol,
     origin: req.headers?.origin,
     secFetchSite: req.headers?.['sec-fetch-site'],
     proxyHeaders: req.headers || {},
+    trustedProxy: view.trusted,
   });
   if (verdict.ok) return false;
   res.statusCode = verdict.status;

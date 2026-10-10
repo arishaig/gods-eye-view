@@ -221,6 +221,7 @@
       "scripts/google-server-key.mjs",
       "src/data/placeProviderPayloads.js",
       "server/providers/common/same-site.js",
+      "server/providers/common/trusted-proxy.js",
       "src/localRequestGate.mjs",
       "src/data/routeSteps.js",
       "src/sources/httpBody.js",
@@ -241,6 +242,7 @@
       "server/providers/space.js",
       "server/providers/space/celestrak.js",
       "server/providers/common/same-site.js",
+      "server/providers/common/trusted-proxy.js",
       "src/localRequestGate.mjs",
       "server/providers/space/cooldown.js",
       "server/providers/space/launch-library.js",
@@ -265,6 +267,7 @@
       "server/providers/common/rate-limit.js",
       "src/sources/rateLimit.js",
       "server/providers/common/same-site.js",
+      "server/providers/common/trusted-proxy.js",
       "src/localRequestGate.mjs"
     ],
     "external": []
@@ -284,6 +287,7 @@
       "src/i18n/marker.js",
       "src/data/tomtomTiles.js",
       "server/providers/common/same-site.js",
+      "server/providers/common/trusted-proxy.js",
       "src/localRequestGate.mjs"
     ],
     "external": []
@@ -320,7 +324,8 @@
       "src/sources/rateLimit.js",
       "src/data/gbfsSource.js",
       "src/sources/httpBody.js",
-      "src/i18n/marker.js"
+      "src/i18n/marker.js",
+      "server/providers/common/trusted-proxy.js"
     ],
     "external": []
   },
@@ -335,6 +340,7 @@
     "modules": [
       "server/providers/cctv.js",
       "server/providers/common/same-site.js",
+      "server/providers/common/trusted-proxy.js",
       "src/localRequestGate.mjs",
       "server/providers/cctv/cap.js",
       "server/providers/cctv/groundHeights.js",
@@ -367,6 +373,7 @@
       "server/providers/mapillary/tiles.js",
       "server/providers/mapillary/trim.js",
       "server/providers/common/same-site.js",
+      "server/providers/common/trusted-proxy.js",
       "src/localRequestGate.mjs",
       "server/providers/common/rate-limit.js",
       "src/sources/rateLimit.js",
@@ -401,6 +408,7 @@
       "server/providers/common/geo.js",
       "server/providers/common/http.js",
       "server/providers/common/rate-limit.js",
+      "server/providers/common/trusted-proxy.js",
       "server/providers/common/request.js",
       "server/providers/common/same-site.js",
       "server/providers/overpass.js",
@@ -427,6 +435,7 @@
       "server/providers/common/http.js",
       "server/providers/common/query.js",
       "server/providers/common/rate-limit.js",
+      "server/providers/common/trusted-proxy.js",
       "server/providers/military-installations.js",
       "server/providers/military-installations/cache.js",
       "server/providers/military-installations/constants.js",
@@ -449,6 +458,7 @@
       "server/providers/common/http.js",
       "server/providers/common/query.js",
       "server/providers/common/rate-limit.js",
+      "server/providers/common/trusted-proxy.js",
       "server/providers/regional.js",
       "server/providers/regional/briefing.js",
       "server/providers/regional/http.js",
@@ -505,6 +515,7 @@
       "src/data/installationFeedback.js",
       "src/voice/voiceCost.js",
       "server/providers/common/same-site.js",
+      "server/providers/common/trusted-proxy.js",
       "src/localRequestGate.mjs",
       "src/voice/actionSchemas.js",
       "src/voice/layerManifest.js",
@@ -2680,6 +2691,7 @@
       "src/scopeMask.js",
       "src/search/alpsGeocoder.js",
       "src/search/defaults.js",
+      "src/runtimeConfig.js",
       "src/search/geospatial.js",
       "src/search/google.js",
       "src/search/http.js",
@@ -4360,6 +4372,7 @@
     "modules": [
       "server/providers/common/http.js",
       "server/providers/common/rate-limit.js",
+      "server/providers/common/trusted-proxy.js",
       "server/providers/transit.js",
       "server/providers/transitHistory.js",
       "src/data/gtfsRealtime.js",
