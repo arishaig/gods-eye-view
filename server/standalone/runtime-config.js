@@ -12,6 +12,10 @@
  * Only keys that are public by design reach this script: the Google Maps
  * browser key (restrict it by HTTP referrer), the Cesium ion `assets:read`
  * token and the Mapillary client token. Server-side secrets never do.
+ *
+ * It also carries GEV_HOME_VIEW, the startup view (`lat,lon[,height_m]`) used
+ * when the URL holds no shared view. It is not a key, but it is browser-side
+ * configuration that differs per deployment, so it travels the same way.
  */
 
 /** Environment names the browser may see, by runtime-config field. */
@@ -19,6 +23,7 @@ export const RUNTIME_CONFIG_KEYS = Object.freeze({
   googleApiKey: 'GOOGLE_MAPS_API_KEY',
   cesiumToken: 'CESIUM_ION_TOKEN',
   mapillaryToken: 'MAPILLARY_CLIENT_TOKEN',
+  homeView: 'GEV_HOME_VIEW',
 });
 
 export const RUNTIME_CONFIG_PATH = '/gev-runtime-config.js';

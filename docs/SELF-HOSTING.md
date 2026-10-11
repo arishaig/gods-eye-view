@@ -43,6 +43,12 @@ page through `/gev-runtime-config.js`, which the server builds from its
 environment. One image can therefore be published and run anywhere. A key set
 at build time still works as a fallback.
 
+`GEV_HOME_VIEW` sets where the globe flies on load when the URL holds no
+shared view, as `lat,lon[,height_m]` (e.g. `51.5072,-0.1276,1500`; the height
+defaults to 600 m). It travels through `/gev-runtime-config.js` too, so anyone
+who can load the page can read it; keep it coarse if it is near home. Unset or
+malformed, the app flies to Austin, TX as before.
+
 The Provider Settings panel is development-only, so it is not available in the
 image; set keys through the environment. ChatGPT OAuth voice needs a loopback
 connection and is unavailable behind a proxy; use `OPENAI_API_KEY`.
