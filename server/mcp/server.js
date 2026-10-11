@@ -26,6 +26,7 @@ const INSTRUCTIONS =
 /** Construct the local MCP server for Core's tools. */
 export function createLocalMcpServer({
   apiBase = DEFAULT_API_BASE,
+  publicUrl,
   fetchImpl,
   panelKey = randomBytes(32).toString('base64url'),
 } = {}) {
@@ -41,7 +42,12 @@ export function createLocalMcpServer({
     catalog: catalogForSurface(
       composeCatalog({
         tools: coreTools,
-        services: createLocalToolServices({ apiBase, fetchImpl, panelKey }),
+        services: createLocalToolServices({
+          apiBase,
+          publicUrl,
+          fetchImpl,
+          panelKey,
+        }),
       }),
       'mcp',
     ),

@@ -4,6 +4,8 @@
  * the sources' relative `/api/...` paths; in a browser the page's own fetch
  * does, and elsewhere a caller supplies a resolving fetch. `appUrl` is the
  * address the app is served from; `app.fetch` requests the app's own paths.
+ * `publicUrl`, when the app is reached at another address (behind a reverse
+ * proxy, say), is the address links to the app name; it defaults to `appUrl`.
  * `panelKey`, when the panel is offered, is the key its page carries, which
  * the panel's requests must include.
  */
@@ -42,12 +44,17 @@ import {
 } from './places.js';
 
 /** Construct every service Core's tools read. */
-export function createToolServices({ fetchImpl, appUrl, panelKey }) {
+export function createToolServices({
+  fetchImpl,
+  appUrl,
+  publicUrl = appUrl,
+  panelKey,
+}) {
   if (typeof fetchImpl !== 'function')
     throw new TypeError('A fetch implementation is required');
   const requests = createApplicationRequestServices({ fetchImpl });
   return {
-    app: { baseUrl: appUrl, fetch: fetchImpl, panelKey },
+    app: { baseUrl: publicUrl, fetch: fetchImpl, panelKey },
     earthquakes: createUsgsEarthquakeSource({ fetchImpl }),
     fires: createFirmsSource({ fetchImpl }),
     launches: createLaunchSource({ fetchImpl }),

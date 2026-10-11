@@ -1,10 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { PassThrough } from 'node:stream';
+import { configuredPublicUrl } from '../../server/mcp/plugin.js';
 import { createLocalMcpServer } from '../../server/mcp/server.js';
-import { createApiFetch } from '../../server/mcp/services.js';
+import {
+  createApiFetch,
+  createLocalToolServices,
+} from '../../server/mcp/services.js';
 import { parseArgs, serveStdio } from '../../server/mcp/stdio.js';
 import { coreTools, toolsForSurface } from './index.js';
+import { suggestView } from './views.js';
 
 const usgs = {
   type: 'FeatureCollection',
@@ -33,6 +38,52 @@ test('relative API requests resolve against the configured base', async () => {
     () => createApiFetch({ apiBase: 'file:///etc' }),
     /http\(s\) URL/,
   );
+});
+
+test('links name the public URL while requests stay on the API base', async () => {
+  const seen = [];
+  const point = { lat: 30.27, lon: -97.74 };
+  const services = createLocalToolServices({
+    apiBase: 'http://127.0.0.1:5000',
+    publicUrl: 'https://globe.example/',
+    fetchImpl: async (url) => {
+      seen.push(String(url));
+      return new Response('ok');
+    },
+  });
+  assert.match(
+    suggestView(services, { point }).url,
+    /^https:\/\/globe\.example\/#v=2&/,
+  );
+  await services.app.fetch('/api/launches');
+  assert.deepEqual(seen, ['http://127.0.0.1:5000/api/launches']);
+  // Without one, links name the API base, as before.
+  assert.match(
+    suggestView(createLocalToolServices({ apiBase: 'http://127.0.0.1:5000' }), {
+      point,
+    }).url,
+    /^http:\/\/127\.0\.0\.1:5000\/#v=2&/,
+  );
+  assert.throws(
+    () => createLocalToolServices({ publicUrl: 'javascript:alert(1)' }),
+    /http\(s\) URL/,
+  );
+});
+
+test('GEV_PUBLIC_URL is read only when it is an http(s) URL', () => {
+  const warnings = [];
+  const warn = (line) => warnings.push(line);
+  assert.equal(configuredPublicUrl({}, warn), undefined);
+  assert.equal(configuredPublicUrl({ GEV_PUBLIC_URL: '  ' }, warn), undefined);
+  assert.equal(
+    configuredPublicUrl({ GEV_PUBLIC_URL: 'https://globe.example' }, warn),
+    'https://globe.example',
+  );
+  assert.equal(
+    configuredPublicUrl({ GEV_PUBLIC_URL: 'globe.example' }, warn),
+    undefined,
+  );
+  assert.equal(warnings.length, 1);
 });
 
 test('the stdio server answers newline-delimited requests using only its data sources', async () => {
@@ -85,6 +136,15 @@ test('command-line arguments are strict', () => {
   assert.deepEqual(parseArgs(['--api-base', 'http://localhost:5173']), {
     apiBase: 'http://localhost:5173',
   });
+  assert.deepEqual(
+    parseArgs([
+      '--api-base',
+      'http://localhost:5173',
+      '--public-url',
+      'https://globe.example',
+    ]),
+    { apiBase: 'http://localhost:5173', publicUrl: 'https://globe.example' },
+  );
   assert.throws(() => parseArgs(['--port', '1']), /Unknown argument/);
 });
 

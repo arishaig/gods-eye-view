@@ -36,6 +36,15 @@ export function createApiFetch({
   };
 }
 
+/** Whether `value` parses as an http(s) URL. */
+export function isHttpUrl(value) {
+  try {
+    return ['http:', 'https:'].includes(new URL(value).protocol);
+  } catch {
+    return false;
+  }
+}
+
 async function readBundled(url) {
   const href = new URL(url).href;
   if (!href.startsWith(BUNDLED_DATA.href) || href.includes('/../'))
@@ -54,11 +63,20 @@ async function readBundled(url) {
   }
 }
 
-/** Construct every service Core's tools read, backed by the local server. */
+/**
+ * Construct every service Core's tools read, backed by the local server.
+ * Links name `publicUrl` when given, while requests still go to `apiBase`.
+ */
 export function createLocalToolServices(options = {}) {
+  const appUrl = options.apiBase ?? DEFAULT_API_BASE;
+  if (options.publicUrl && !isHttpUrl(options.publicUrl))
+    throw new TypeError(
+      `publicUrl must be an http(s) URL: ${options.publicUrl}`,
+    );
   return createToolServices({
     fetchImpl: createApiFetch(options),
-    appUrl: options.apiBase ?? DEFAULT_API_BASE,
+    appUrl,
+    publicUrl: options.publicUrl || appUrl,
     panelKey: options.panelKey,
   });
 }
