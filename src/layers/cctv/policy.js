@@ -134,6 +134,33 @@ export const PROBE_MIN_RANGE_M = 12;
 
 export const GROUND_PRIOR_INIT_WAIT_MS = 8000;
 
+// Viewport tier: once the view settles at regional zoom, the cameras inside it
+// are fetched from every loaded source and added on top of the startup
+// catalog. Wider views (a continent, the globe) keep the startup catalog only:
+// it is already spread across every region, and a box that wide would ask for
+// the whole loaded set.
+
+/** Widest view, in degrees of latitude or longitude, that fetches its cameras. */
+
+export const VIEWPORT_MAX_SPAN_DEG = 6;
+
+/** Settle time after the last camera move before a viewport fetch. */
+
+export const VIEWPORT_DEBOUNCE_MS = 400;
+
+/** Fraction of the view's span added on every side of a fetched box, so a
+ * small pan stays inside the box already fetched. */
+
+export const VIEWPORT_PAD_FRACTION = 0.25;
+
+/** Cameras one viewport request may return. */
+
+export const VIEWPORT_FETCH_LIMIT = 1500;
+
+/** Viewport-tier records kept before the farthest from view are evicted. */
+
+export const VIEWPORT_MAX_RECORDS = 2500;
+
 /** Default calibration offsets — all zeroed, range scale 1x. */
 
 export const DEFAULT_CAMERA_CALIBRATION = Object.freeze({

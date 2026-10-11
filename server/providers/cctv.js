@@ -17,6 +17,11 @@ import {
   CCTV_MAX_SOURCES_CEILING,
 } from './cctv/constants.js';
 import { sanitizeCctvRangeHeader } from './cctv/range.js';
+import {
+  parseCctvBbox,
+  resolveViewportLimit,
+  selectSourcesInBbox,
+} from './cctv/bbox.js';
 import { createHlsPuller } from './cctv/stream.js';
 import { googleServerApiKey } from './places/google-key.js';
 export { CCTV_FRAME_FETCH_TIMEOUT_MS, fetchCctvImageFromUpstream };
@@ -25,7 +30,10 @@ export { CCTV_FRAME_FETCH_TIMEOUT_MS, fetchCctvImageFromUpstream };
  * fallback chain (upstream -> Street View -> synthetic SVG), and health tracking.
  *
  * Endpoints:
- *   GET /api/cctv/sources        — list all registered camera sources
+ *   GET /api/cctv/sources        — the global camera list (capped by CCTV_MAX_SOURCES)
+ *   GET /api/cctv/sources?bbox=w,s,e,n[&limit=N]
+ *                                — the cameras inside a viewport, from every loaded source
+ *   GET /api/cctv/sources?id=…   — one loaded camera by id (empty when unknown)
  *   GET /api/cctv/health         — per-camera health/status report
  *   GET /api/cctv/stream/:id     — stream info (feedType, URLs) for a camera
  *   GET /api/cctv/media/:id      — proxy live video/image media from upstream
@@ -129,6 +137,44 @@ export function cctvProxy({ sourceRoot = process.cwd() } = {}) {
     }
   };
 
+  /** id → source over the full loaded set, rebuilt only when a catalog
+   * refresh replaces that array. */
+  let registryFor = null;
+  let registry = new Map();
+  const registryOf = (loaded) => {
+    if (loaded !== registryFor) {
+      registry = new Map(loaded.map((source) => [source.id, source]));
+      registryFor = loaded;
+    }
+    return registry;
+  };
+
+  /** The client-facing record for one source (no upstream URLs). */
+  const serializeSource = (source) => ({
+    id: source.id,
+    pack: source.pack,
+    name: source.name,
+    city: source.city,
+    cityId: source.cityId,
+    provider: source.provider,
+    lat: source.lat,
+    lon: source.lon,
+    headingDeg: source.headingDeg,
+    headingConfidence: source.headingConfidence || '',
+    pitchDeg: source.pitchDeg,
+    fovDeg: source.fovDeg,
+    rangeM: source.rangeM,
+    mountHeightM: source.mountHeightM,
+    groundElevationM: source.groundElevationM,
+    feedType: normalizeFeedType(source.feedType),
+    sourceKind: source.sourceKind || (source.url ? 'configured' : 'fallback'),
+    poseSource: source.poseSource,
+    license: source.license,
+    credit: source.credit || '',
+    code: source.code || '',
+    groundHeights: source.groundHeights || null,
+  });
+
   const installMiddleware = (server) => {
     server.httpServer?.on('close', () => {
       puller.shutdown();
@@ -136,39 +182,69 @@ export function cctvProxy({ sourceRoot = process.cwd() } = {}) {
     server.middlewares.use('/api/cctv', async (req, res) => {
       try {
         const sources = await getCctvSources();
-        const sourceById = new Map(
-          sources.map((source) => [source.id, source]),
-        );
+        // Every loaded camera is registered, not only the capped global list:
+        // a camera a viewport query returned must resolve on /frame, /stream
+        // and /media. Ids outside the loaded set still resolve to nothing.
+        const loaded = getCctvSources.loadedSources?.() || sources;
+        const registered = loaded.length ? loaded : sources;
+        const sourceById = registryOf(registered);
         const url = new URL(req.url || '/', 'http://localhost');
 
         if (url.pathname === '/sources') {
+          const idParam = url.searchParams.get('id');
+          if (idParam !== null) {
+            const match = sourceById.get(idParam.trim());
+            res.writeHead(200, {
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-store',
+            });
+            res.end(
+              JSON.stringify({
+                sources: match ? [serializeSource(match)] : [],
+              }),
+            );
+            return;
+          }
+          const bboxParam = url.searchParams.get('bbox');
+          if (bboxParam !== null) {
+            const box = parseCctvBbox(bboxParam);
+            if (!box) {
+              res.writeHead(400, {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-store',
+              });
+              res.end(
+                JSON.stringify({
+                  error: 'bbox must be west,south,east,north in degrees',
+                }),
+              );
+              return;
+            }
+            const limit = resolveViewportLimit(url.searchParams.get('limit'));
+            const selected = selectSourcesInBbox(registered, box, limit);
+            res.writeHead(200, {
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-store',
+            });
+            res.end(
+              JSON.stringify({
+                scope: {
+                  bbox: box,
+                  limit,
+                  available: selected.available,
+                  served: selected.sources.length,
+                },
+                sources: selected.sources.map(serializeSource),
+              }),
+            );
+            return;
+          }
           const body = {
             trimmedPacks: getCctvSources.trimmedPacks?.() ?? [],
-            sources: sources.map((source) => ({
-              id: source.id,
-              pack: source.pack,
-              name: source.name,
-              city: source.city,
-              cityId: source.cityId,
-              provider: source.provider,
-              lat: source.lat,
-              lon: source.lon,
-              headingDeg: source.headingDeg,
-              headingConfidence: source.headingConfidence || '',
-              pitchDeg: source.pitchDeg,
-              fovDeg: source.fovDeg,
-              rangeM: source.rangeM,
-              mountHeightM: source.mountHeightM,
-              groundElevationM: source.groundElevationM,
-              feedType: normalizeFeedType(source.feedType),
-              sourceKind:
-                source.sourceKind || (source.url ? 'configured' : 'fallback'),
-              poseSource: source.poseSource,
-              license: source.license,
-              credit: source.credit || '',
-              code: source.code || '',
-              groundHeights: source.groundHeights || null,
-            })),
+            // Lets a client discover viewport queries without probing; an
+            // older server simply omits it and the client keeps the global list.
+            viewport: { bbox: true, loaded: registered.length },
+            sources: sources.map(serializeSource),
           };
           res.writeHead(200, {
             'Content-Type': 'application/json',

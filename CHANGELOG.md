@@ -1,5 +1,18 @@
 # Changelog
 
+- Load CCTV cameras for the current view. The server now keeps every camera
+  the source packs load, and `CCTV_MAX_SOURCES` caps only the global list the
+  client builds at startup. `GET /api/cctv/sources?bbox=west,south,east,north`
+  returns the cameras inside a viewport (antimeridian-aware, `limit` up to the
+  ceiling, shared round-robin across packs), and `?id=` returns one loaded
+  camera. Once the view settles within about 6° the client fetches its cameras
+  and adds the ones the startup list lacks; that tier is evicted
+  farthest-first past 2,500 records and never touches the startup list, the
+  active, calibrating or hovered camera. Every loaded camera is registered for
+  frames, streams and media, so a camera found by viewport always plays.
+  `find_cctv_cameras` asks for its area and `get_cctv_snapshot` resolves any
+  loaded id. A client against an older server keeps the global list only.
+
 - Treat explicitly current, complete empty vessel coverage as a successful update,
   clearing obsolete contacts while retaining stale or incomplete snapshots.
 

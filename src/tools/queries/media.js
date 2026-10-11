@@ -18,9 +18,11 @@ const round = (value, digits) =>
   Number.isFinite(value) ? Number(value.toFixed(digits)) : null;
 const text = (value) => (typeof value === 'string' && value ? value : null);
 
-async function readCatalog(services, signal) {
-  const payload = await services.cctv.getCatalog({ signal });
+async function readCatalog(services, signal, query = {}) {
+  const payload = await services.cctv.getCatalog({ ...query, signal });
   return {
+    // A viewport answer reports its own completeness instead of trimmedPacks.
+    scope: payload.scope || null,
     cameras: payload.sources.filter(
       (camera) =>
         camera?.id &&
@@ -67,16 +69,38 @@ export const findCctvCameras = defineTool({
   async run(args, { services, signal }) {
     const area = await resolveArea(args.area, { services, signal });
     const center = areaCenter(area);
-    const catalog = await readCatalog(services, signal);
+    // Ask for the area itself, so cameras the global list leaves out are
+    // still found; an older server answers with the global list instead.
+    const catalog = await readCatalog(services, signal, {
+      bbox: {
+        west: area.west,
+        south: area.south,
+        east: area.east,
+        north: area.north,
+      },
+    });
     const found = catalog.cameras.filter((camera) =>
       areaContains(area, camera),
     );
     // A trimmed pack matters wherever its cameras are, served or not, so
-    // its region decides, not the cameras returned.
+    // its region decides, not the cameras returned. A viewport answer is
+    // trimmed only when the box held more cameras than one request returns.
     const packs = new Set(found.map((camera) => camera.pack).filter(Boolean));
-    const trimmed = catalog.trimmed.filter((entry) =>
-      entry.region ? boxesOverlap(area, entry.region) : packs.has(entry.pack),
-    );
+    const trimmed = catalog.scope
+      ? catalog.scope.served < catalog.scope.available
+        ? [
+            {
+              pack: 'all',
+              served: catalog.scope.served,
+              available: catalog.scope.available,
+            },
+          ]
+        : []
+      : catalog.trimmed.filter((entry) =>
+          entry.region
+            ? boxesOverlap(area, entry.region)
+            : packs.has(entry.pack),
+        );
     const rows = found
       .map((camera) => ({
         id: camera.id,
@@ -129,9 +153,15 @@ export const getCctvSnapshot = defineTool({
   },
   requires: ['cctv'],
   async run(args, { services, signal }) {
-    const camera = (await readCameras(services, signal)).find(
-      (candidate) => candidate.id === args.camera_id,
-    );
+    // The global list first (what an older server has), then the loaded set
+    // by id, which also holds cameras only an area query returned.
+    const camera =
+      (await readCameras(services, signal)).find(
+        (candidate) => candidate.id === args.camera_id,
+      ) ||
+      (
+        await readCatalog(services, signal, { id: args.camera_id })
+      ).cameras.find((candidate) => candidate.id === args.camera_id);
     if (!camera)
       throw new ToolError(
         'invalid_arguments',

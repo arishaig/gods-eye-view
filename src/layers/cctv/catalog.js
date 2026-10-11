@@ -86,6 +86,9 @@ export function createCatalog({ state: layerState, services, parts, source }) {
       const data = await source.getCatalog({ signal });
       signal?.throwIfAborted();
       if (!Array.isArray(data?.sources)) return [];
+      // Viewport queries are used only when the server advertises them, so a
+      // newer client against an older server keeps the global list alone.
+      layerState._viewportSupported = data?.viewport?.bbox === true;
       return data.sources;
     } catch (error) {
       if (error?.name === 'AbortError') throw error;
