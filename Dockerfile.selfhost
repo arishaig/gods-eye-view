@@ -17,7 +17,9 @@ ENV PUPPETEER_SKIP_DOWNLOAD=1
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY . .
-RUN npm run build
+# The panel build (dist/panel, for MCP clients that show apps) goes second:
+# `vite build` empties dist/ first.
+RUN npm run build && npm run build:panel
 
 # `vite preview` loads the Vite config and its provider plugins, which need
 # the full dependency tree (including native esbuild/rollup builds for this

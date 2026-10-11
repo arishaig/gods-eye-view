@@ -79,6 +79,25 @@ The proxy should:
 Scope the trusted range as narrowly as your network allows. Any peer in it can
 choose the client address and origin the app sees.
 
+## MCP clients
+
+The MCP server at `/mcp` ([MCP_SETUP.md](MCP_SETUP.md)) answers only local
+requests, with or without `GEV_TRUSTED_PROXIES`: the peer must be loopback,
+the Host must name a loopback host on the port the request reached, and the
+request must carry no forwarding headers. To offer it to a remote client, run
+your own authenticating proxy **in the same network namespace** as the app
+(a sidecar container in the same pod, for example). Have it check the
+client's credentials, then forward each request to
+`http://127.0.0.1:4173/mcp` with `Host: localhost:4173`, passing only the
+`Content-Type`, `Accept`, `MCP-Protocol-Version` and `Mcp-Session-Id`
+headers. The proxy is then the only thing standing between the network and
+your keys, so make it strict.
+
+Set `GEV_PUBLIC_URL` (e.g. `https://globe.example.com`) so the links tools
+return name the app's public address instead of `http://localhost:4173`.
+The tools still read data from the local address. The image includes the
+panel build that clients which display apps load.
+
 ## Updating
 
 Rebuild the image from a newer checkout. Caches in `/app/.gev-cache` are safe
