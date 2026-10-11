@@ -164,6 +164,12 @@ export function createCctvCatalog({ sourceRoot = process.cwd() } = {}) {
   /** @type {Array<{pack: string, available: number, served: number}>} Packs
    * that serve fewer cameras than they offer. */
   let _cctvTrimmedPacks = [];
+  /** @type {Array<object>} Every source the packs loaded (each pack's own cap
+   * applied, duplicates resolved), before the catalog-wide cap. Viewport
+   * queries select from it, and it is the registry frame/stream/media
+   * requests resolve against, so a camera found by viewport is always
+   * proxyable. */
+  let _cctvLoadedSources = [];
 
   /**
    * Assemble and cache the merged CCTV source list.
@@ -250,14 +256,15 @@ export function createCctvCatalog({ sourceRoot = process.cwd() } = {}) {
       normalizePack('env', fromEnv),
     ];
     const maxCount = resolveCatalogCap(process.env.CCTV_MAX_SOURCES);
-    const allocation = allocateSourceCap(packs, maxCount);
+    // The whole loaded set first (an unbounded allocation only resolves
+    // duplicate ids), then the capped baseline drawn from the same records.
+    const loaded = allocateSourceCap(packs, Infinity).sources;
     // Shipped ground heights (src/data/local_data/cctv_ground_heights/, produced by
     // scripts/precompute-cctv-heights.mjs) ride along on the served source so
     // the client can place a camera and its monitor plane with zero sampling.
-    const capped = joinGroundHeights(
-      allocation.sources,
-      loadGroundHeights(sourceRoot),
-    );
+    joinGroundHeights(loaded, loadGroundHeights(sourceRoot));
+    const allocation = allocateSourceCap(packs, maxCount);
+    const capped = allocation.sources;
     const trimmed = allocation.packs.filter((pack) => pack.kept < pack.offered);
     // Each pack's own nearest-first cap and the shared catalog cap both trim.
     const trimmedPacks = packs
@@ -274,11 +281,12 @@ export function createCctvCatalog({ sourceRoot = process.cwd() } = {}) {
         .map((pack) => `${pack.name} ${pack.kept}/${pack.offered}`)
         .join(', ');
       console.warn(
-        `[CCTV] source catalog exceeds cap ${maxCount}; shared round-robin across packs (${detail}). Raise CCTV_MAX_SOURCES or lower a per-pack cap to change the mix.`,
+        `[CCTV] source catalog exceeds cap ${maxCount}; the global list is shared round-robin across packs (${detail}), and the rest stay available to viewport queries. Raise CCTV_MAX_SOURCES or lower a per-pack cap to change the global mix.`,
       );
     }
     if (capped.length > 0 || _cctvSourceCache.length === 0) {
       _cctvSourceCache = capped;
+      _cctvLoadedSources = loaded;
       _cctvTrimmedPacks = trimmedPacks;
     } else {
       // Every source came back empty (all live packs timed out / upstream outage)
@@ -295,5 +303,7 @@ export function createCctvCatalog({ sourceRoot = process.cwd() } = {}) {
 
   /** Packs serving fewer cameras than they offer, as of the last refresh. */
   getCctvSources.trimmedPacks = () => _cctvTrimmedPacks;
+  /** Every loaded source, as of the last refresh (call getCctvSources first). */
+  getCctvSources.loadedSources = () => _cctvLoadedSources;
   return getCctvSources;
 }

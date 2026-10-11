@@ -204,5 +204,21 @@ export function createState({ services }) {
 
   layerState._moveStartListener = null;
   layerState._sourceAbort = null;
+
+  // Viewport tier (see viewport.js): cameras fetched for the current view on
+  // top of the startup catalog, evictable. Supported only when the server's
+  // global list advertises `viewport.bbox`.
+
+  layerState._viewportSupported = false;
+
+  layerState._viewportAbort = null;
+
+  layerState._viewportTimer = 0;
+
+  /** Last box fetched, padded; a view inside it needs no new request. */
+
+  layerState._viewportFetchedBox = null;
+
+  layerState._viewportMoveEndListener = null;
   return layerState;
 }

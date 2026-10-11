@@ -5,13 +5,15 @@ export const DEFAULT_AUSTIN_ROWS_URL =
 /** Default cap on Austin cameras after distance-based prioritization. */
 export const DEFAULT_AUSTIN_MAX_SOURCES = 250;
 /**
- * Catalog-wide safety ceiling on served cameras. Each pack already caps
- * itself (nearest-to-anchor first); this bound only matters when the packs
- * together exceed it, and it is then filled round-robin across packs (see
- * cap.js) so no region is silently dropped. Sized above the sum of the
- * default per-pack caps so a default install never trims (enforced by
- * cctvCatalogCap.test.mjs). The per-pack defaults reach 5,604 with WSDOT,
- * City of Seattle and Statens vegvesen, so this is 6,000: the full
+ * Cap on the global camera list (GET /api/cctv/sources with no bbox), the
+ * set the client builds at startup. Each pack already caps itself
+ * (nearest-to-anchor first); this bound only matters when the packs together
+ * exceed it, and it is then filled round-robin across packs (see cap.js) so
+ * no region is silently dropped. Cameras past it stay loaded and registered:
+ * a zoomed-in client fetches them with a bbox query (see bbox.js). Sized above
+ * the sum of the default per-pack caps so a default install never trims
+ * (enforced by cctvCatalogCap.test.mjs). The per-pack defaults reach 5,604
+ * with WSDOT, City of Seattle and Statens vegvesen, so this is 6,000: the full
  * CCTV_MAX_SOURCES_CEILING, which also sizes the health map.
  */
 export const DEFAULT_CCTV_MAX_SOURCES = 6000;

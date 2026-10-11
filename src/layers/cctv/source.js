@@ -43,8 +43,26 @@ export function createCctvSource({
     return payload;
   }
   return {
-    getCatalog(options) {
-      return read('/api/cctv/sources', 'sources', options);
+    /**
+     * The global camera list; with `bbox` ({west, south, east, north},
+     * degrees) the cameras inside that viewport from every loaded source; with
+     * `id` that one loaded camera. An older server ignores both and answers
+     * with the global list, which callers filter as before.
+     */
+    getCatalog({ bbox, limit, id, ...options } = {}) {
+      if (id != null) {
+        const params = new URLSearchParams({ id: String(id) });
+        return read(`/api/cctv/sources?${params}`, 'sources', options);
+      }
+      if (!bbox) return read('/api/cctv/sources', 'sources', options);
+      const params = new URLSearchParams({
+        bbox: [bbox.west, bbox.south, bbox.east, bbox.north]
+          .map((value) => Number(value).toFixed(5))
+          .join(','),
+      });
+      if (Number.isFinite(limit))
+        params.set('limit', String(Math.floor(limit)));
+      return read(`/api/cctv/sources?${params}`, 'sources', options);
     },
     getHealth(options) {
       return read('/api/cctv/health', 'cameras', options);

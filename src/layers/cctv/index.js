@@ -18,6 +18,8 @@ import { createHealth } from './health.js';
 import { createControls } from './controls.js';
 import { createIngestion } from './ingestion.js';
 import { createState } from './state.js';
+import { createRecords } from './records.js';
+import { createViewport } from './viewport.js';
 
 /** Construct one layer with its own scene state and supplied application services. */
 export function createCctvLayer({ services, source }) {
@@ -45,6 +47,8 @@ export function createCctvLayer({ services, source }) {
   parts.hover = createHover(context);
   parts.navigation = createNavigation(context);
   parts.presentation = createPresentation(context);
+  parts.records = createRecords(context);
+  parts.viewport = createViewport(context);
   parts.lifecycle = createLifecycle(context);
   parts.health = createHealth(context);
   parts.controls = createControls(context);

@@ -326,3 +326,89 @@ test('an area the catalog trimmed away entirely is not reported complete', async
     'The camera catalog has no cameras in 3 km around 40.700, -74.000.',
   );
 });
+
+/** A viewport-aware source: the global list holds one camera, the area and
+ * id queries reach a second one the global list left out. */
+const viewportCctv = ({ available } = {}) => {
+  const extra = {
+    id: 'austin-extra',
+    name: 'Guadalupe at 24th',
+    city: 'Austin',
+    provider: 'City of Austin',
+    lat: 30.287,
+    lon: -97.7415,
+    headingDeg: 0,
+    feedType: 'image',
+  };
+  return {
+    queries: [],
+    frames: [],
+    async getCatalog({ bbox, id } = {}) {
+      this.queries.push(bbox ? 'bbox' : id ? `id:${id}` : 'global');
+      if (id) return { sources: id === extra.id ? [extra] : [] };
+      if (bbox) {
+        const inBox = [cameras[0], extra];
+        return {
+          scope: {
+            bbox,
+            available: available ?? inBox.length,
+            served: inBox.length,
+          },
+          sources: inBox,
+        };
+      }
+      return { sources: [cameras[0]], trimmedPacks: [] };
+    },
+    async getFrame(camera) {
+      this.frames.push(camera.id);
+      return { contentType: 'image/png', bytes: PNG };
+    },
+  };
+};
+
+test('an area search asks for the area and finds cameras the global list left out', async () => {
+  const cctvService = viewportCctv();
+  const catalog = composeCatalog({
+    tools: coreTools,
+    services: { cctv: cctvService },
+  });
+  const result = await catalog.call('find_cctv_cameras', {
+    area: { lat: 30.278, lon: -97.742, radius_km: 3 },
+  });
+  assert.deepEqual(cctvService.queries, ['bbox']);
+  assert.deepEqual(result.data.rows.map((row) => row.id).sort(), [
+    'austin-1',
+    'austin-extra',
+  ]);
+  assert.equal(result.data.complete, true);
+});
+
+test('a viewport answer capped below what the area holds is reported as incomplete', async () => {
+  const catalog = composeCatalog({
+    tools: coreTools,
+    services: { cctv: viewportCctv({ available: 40 }) },
+  });
+  const result = await catalog.call('find_cctv_cameras', {
+    area: { lat: 30.278, lon: -97.742, radius_km: 3 },
+  });
+  assert.equal(result.data.complete, false);
+  assert.match(result.summary, /2 of 40/);
+});
+
+test('a snapshot resolves a camera only an area search returned', async () => {
+  const cctvService = viewportCctv();
+  const catalog = composeCatalog({
+    tools: coreTools,
+    services: { cctv: cctvService },
+  });
+  const result = await catalog.call('get_cctv_snapshot', {
+    camera_id: 'austin-extra',
+  });
+  assert.equal(result.data.id, 'austin-extra');
+  assert.deepEqual(cctvService.queries, ['global', 'id:austin-extra']);
+  assert.deepEqual(cctvService.frames, ['austin-extra']);
+  await assert.rejects(
+    catalog.call('get_cctv_snapshot', { camera_id: 'nope' }),
+    /No camera has id nope/,
+  );
+});
