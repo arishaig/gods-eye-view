@@ -1,11 +1,12 @@
 /**
  * Local MCP server over stdio for agents such as Claude Code and Codex.
  *
- *   npm run mcp -- [--api-base http://localhost:4173]
+ *   npm run mcp -- [--api-base http://localhost:4173] [--public-url https://globe.example]
  *
  * Reads newline-delimited JSON-RPC from stdin and writes responses to stdout.
  * Tools read data from a running God's Eye View server (`npm run dev` or
- * `npm run preview`) at the API base. Diagnostics go to stderr.
+ * `npm run preview`) at the API base. Links name the public URL, when the app
+ * is reached at another address than the API base. Diagnostics go to stderr.
  */
 
 import { createInterface } from 'node:readline';
@@ -81,12 +82,14 @@ async function respond(server, line, log, running) {
   return response;
 }
 
-/** Read `--api-base <url>` from command-line arguments. */
+/** Read `--api-base <url>` and `--public-url <url>` from command-line arguments. */
 export function parseArgs(argv) {
   const options = {};
   for (let index = 0; index < argv.length; index += 1) {
     if (argv[index] === '--api-base' && argv[index + 1])
       options.apiBase = argv[(index += 1)];
+    else if (argv[index] === '--public-url' && argv[index + 1])
+      options.publicUrl = argv[(index += 1)];
     else throw new Error(`Unknown argument: ${argv[index]}`);
   }
   return options;
