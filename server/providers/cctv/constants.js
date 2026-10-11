@@ -236,6 +236,25 @@ export const CALGARY_DOWNTOWN = { lat: 51.0461, lon: -114.0626 };
  * body cannot be buffered without limit. */
 export const CALGARY_MAX_CATALOG_BYTES = 4 * 1024 * 1024;
 
+/** City of Seattle (SDOT) traffic cameras: the City's keyless ArcGIS open-data
+ * layer, one GeoJSON query for the whole city. The layer also lists the WSDOT
+ * highway cameras inside city limits; the query keeps SDOT-owned, in-service
+ * rows only, so this pack never duplicates a state highway pack. */
+export const DEFAULT_SEATTLE_CCTV_URL =
+  "https://services.arcgis.com/ZOyb2t4B0UYuYNYH/arcgis/rest/services/Traffic_Cameras_CDL/FeatureServer/0/query?where=OWNERSHIP%3D'SDOT'%20AND%20SERVSTAT%3D'ACTV'&outFields=UNITID,LOCATION,URL,SERVSTAT,OWNERSHIP&outSR=4326&f=geojson";
+/** The only origin Seattle camera frames may come from. Most rows publish
+ * `http://`; the host serves HTTPS, so URLs are upgraded and then pinned here
+ * before registration. */
+export const SEATTLE_IMAGE_ORIGIN =
+  'https://www.seattle.gov/trafficcams/images/';
+export const DEFAULT_SEATTLE_MAX_SOURCES = 400;
+/** 4th Avenue / Pike Street: the prioritization anchor. */
+export const SEATTLE_DOWNTOWN = { lat: 47.6101, lon: -122.3375 };
+/** Hard ceiling on the Seattle catalog body. The whole city is ~400 rows and
+ * under 250 KB with every field; this only exists so an upstream that streams
+ * an unbounded body cannot be buffered without limit. */
+export const SEATTLE_MAX_CATALOG_BYTES = 2 * 1024 * 1024;
+
 /** Statens vegvesen (Norway) road cameras: the keyless OGC API Features view
  * of the official DATEX 3.1 CCTV site table, one GeoJSON request for the whole
  * country (~900 cameras). The raw DATEX node needs an account; this view does
