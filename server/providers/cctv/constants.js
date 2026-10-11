@@ -10,11 +10,11 @@ export const DEFAULT_AUSTIN_MAX_SOURCES = 250;
  * together exceed it, and it is then filled round-robin across packs (see
  * cap.js) so no region is silently dropped. Sized above the sum of the
  * default per-pack caps so a default install never trims (enforced by
- * cctvCatalogCap.test.mjs). The per-pack defaults reach 5,204 with WSDOT and
- * Statens vegvesen, so this is 5,500: room for one more small pack while
- * staying under CCTV_MAX_SOURCES_CEILING, which also sizes the health map.
+ * cctvCatalogCap.test.mjs). The per-pack defaults reach 5,604 with WSDOT,
+ * City of Seattle and Statens vegvesen, so this is 6,000: the full
+ * CCTV_MAX_SOURCES_CEILING, which also sizes the health map.
  */
-export const DEFAULT_CCTV_MAX_SOURCES = 5500;
+export const DEFAULT_CCTV_MAX_SOURCES = 6000;
 /** Hard upper bound for CCTV_MAX_SOURCES; also sizes the health map. */
 export const CCTV_MAX_SOURCES_CEILING = 6000;
 /** Reference point for Austin camera prioritization (Congress & 6th). */
@@ -238,6 +238,25 @@ export const CALGARY_DOWNTOWN = { lat: 51.0461, lon: -114.0626 };
  * under 100 KB; this only exists so an upstream that streams an unbounded
  * body cannot be buffered without limit. */
 export const CALGARY_MAX_CATALOG_BYTES = 4 * 1024 * 1024;
+
+/** City of Seattle (SDOT) traffic cameras: the City's keyless ArcGIS open-data
+ * layer, one GeoJSON query for the whole city. The layer also lists the WSDOT
+ * highway cameras inside city limits; the query keeps SDOT-owned, in-service
+ * rows only, so this pack never duplicates a state highway pack. */
+export const DEFAULT_SEATTLE_CCTV_URL =
+  "https://services.arcgis.com/ZOyb2t4B0UYuYNYH/arcgis/rest/services/Traffic_Cameras_CDL/FeatureServer/0/query?where=OWNERSHIP%3D'SDOT'%20AND%20SERVSTAT%3D'ACTV'&outFields=UNITID,LOCATION,URL,SERVSTAT,OWNERSHIP&outSR=4326&f=geojson";
+/** The only origin Seattle camera frames may come from. Most rows publish
+ * `http://`; the host serves HTTPS, so URLs are upgraded and then pinned here
+ * before registration. */
+export const SEATTLE_IMAGE_ORIGIN =
+  'https://www.seattle.gov/trafficcams/images/';
+export const DEFAULT_SEATTLE_MAX_SOURCES = 400;
+/** 4th Avenue / Pike Street: the prioritization anchor. */
+export const SEATTLE_DOWNTOWN = { lat: 47.6101, lon: -122.3375 };
+/** Hard ceiling on the Seattle catalog body. The whole city is ~400 rows and
+ * under 250 KB with every field; this only exists so an upstream that streams
+ * an unbounded body cannot be buffered without limit. */
+export const SEATTLE_MAX_CATALOG_BYTES = 2 * 1024 * 1024;
 
 /** Statens vegvesen (Norway) road cameras: the keyless OGC API Features view
  * of the official DATEX 3.1 CCTV site table, one GeoJSON request for the whole

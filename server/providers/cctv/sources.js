@@ -69,6 +69,11 @@ import {
   DEFAULT_VEGVESEN_MAX_SOURCES,
   VEGVESEN_MAX_CATALOG_BYTES,
   NORWAY_ANCHORS,
+  DEFAULT_SEATTLE_CCTV_URL,
+  SEATTLE_IMAGE_ORIGIN,
+  DEFAULT_SEATTLE_MAX_SOURCES,
+  SEATTLE_DOWNTOWN,
+  SEATTLE_MAX_CATALOG_BYTES,
 } from './constants.js';
 import {
   toFiniteNumber,
@@ -87,6 +92,7 @@ import {
   isLikelyNswCoordinate,
   isLikelyCalgaryCoordinate,
   isLikelyNorwayCoordinate,
+  isLikelySeattleCoordinate,
   cameraDisplayCode,
   rowArrayToObject,
   prioritizeSources,
@@ -1999,6 +2005,187 @@ export async function loadVegvesenSourcesFromOpenData() {
   } catch (error) {
     console.warn(
       '[CCTV] Vegvesen camera download error:',
+      error?.message || error,
+    );
+    return [];
+  }
+}
+
+/**
+ * Upgrade a Seattle catalog frame URL to HTTPS and pin it to the City host.
+ *
+ * Most rows ship `http://`; the host serves the same frames over HTTPS, so
+ * upgrading avoids sending every frame fetch in the clear. Anything not under
+ * the official trafficcams path is refused rather than proxied, the same pin
+ * the Calgary and TfL packs apply. That includes the occasional hand-edited
+ * row whose URL field is not a URL at all ("URL\thttps://…").
+ *
+ * @param {string|null|undefined} raw - `URL` from the layer.
+ * @returns {?string} Pinned HTTPS URL, or null when unusable.
+ */
+export function normalizeSeattleImageUrl(raw) {
+  const text = String(raw ?? '').trim();
+  if (!text) return null;
+  let parsed;
+  try {
+    parsed = new URL(text);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+  parsed.protocol = 'https:';
+  const upgraded = parsed.toString();
+  return upgraded.startsWith(SEATTLE_IMAGE_ORIGIN) ? upgraded : null;
+}
+
+/**
+ * One City of Seattle layer feature -> one catalog source, or null.
+ *
+ * NO HEADING IS DERIVED FROM THE RECORD. Frame filenames end in tokens that
+ * look like one ("…_NS", "…_EW", "…_NWC"), but they name the street axis the
+ * camera covers or the corner it is mounted on, not a bearing: an `_NS`
+ * camera may face north or south, and an `_NWC` camera is on the northwest
+ * corner, facing anywhere. Headings therefore use the shared id-hash fallback
+ * at low confidence, as the Calgary pack does for its address-grid suffix, and
+ * the operator corrects them with the calibration gizmo.
+ *
+ * @param {object} feature - GeoJSON feature from the layer query.
+ * @returns {?object}
+ */
+export function seattleCameraToSource(feature) {
+  if (!feature || typeof feature !== 'object') return null;
+  const props = feature.properties || {};
+  // The query already filters these; re-checking keeps a URL override or a
+  // layer schema change from registering removed or WSDOT-owned cameras.
+  if (
+    String(props.SERVSTAT ?? '')
+      .trim()
+      .toUpperCase() !== 'ACTV'
+  )
+    return null;
+  if (
+    String(props.OWNERSHIP ?? '')
+      .trim()
+      .toUpperCase() !== 'SDOT'
+  ) {
+    return null;
+  }
+  const coordinates = feature?.geometry?.coordinates;
+  if (!Array.isArray(coordinates) || coordinates.length < 2) return null;
+  const lon = toFiniteNumber(coordinates[0]);
+  const lat = toFiniteNumber(coordinates[1]);
+  if (!isLikelySeattleCoordinate(lat, lon)) return null;
+
+  const unitId = String(props.UNITID ?? '').trim();
+  if (!/^[A-Za-z0-9-]+$/.test(unitId)) return null;
+  const imageUrl = normalizeSeattleImageUrl(props.URL);
+  if (!imageUrl) return null;
+  const cameraId = `sdot-${unitId.toLowerCase()}`;
+  const name =
+    String(props.LOCATION ?? '').trim() || `Seattle Camera ${unitId}`;
+
+  return {
+    id: cameraId,
+    name,
+    city: 'Seattle',
+    cityId: 'seattle',
+    provider: 'Seattle Department of Transportation',
+    lat,
+    lon,
+    headingDeg: fallbackHeadingFromId(cameraId),
+    headingConfidence: 'low',
+    pitchDeg: -18,
+    fovDeg: 44,
+    rangeM: 145,
+    mountHeightM: 8,
+    // The city runs from the waterfront to hilltops near 150 m; the client's
+    // one-shot ground snap corrects this prior wherever 3D tiles are loaded.
+    groundElevationM: 60,
+    feedType: 'image',
+    url: imageUrl,
+    snapshotUrl: imageUrl,
+    sourceKind: 'seattle-open-data',
+    license: 'City of Seattle, Seattle Department of Transportation',
+    // Unselected-label code: the intersection, so a camera at rest reads as a
+    // place rather than as its id.
+    code: cameraDisplayCode(name.toUpperCase()),
+  };
+}
+
+/**
+ * Fetch City of Seattle (SDOT) traffic cameras from the City's keyless ArcGIS
+ * open-data layer. Frames are stills on www.seattle.gov.
+ *
+ * @returns {Promise<Array<object>>} Normalized camera source objects.
+ */
+export async function loadSeattleSourcesFromOpenData() {
+  try {
+    const endpoint = process.env.CCTV_SEATTLE_URL || DEFAULT_SEATTLE_CCTV_URL;
+    const resp = await fetch(endpoint, {
+      headers: { Accept: 'application/geo+json,application/json' },
+      redirect: 'manual',
+      signal: AbortSignal.timeout(CCTV_SOURCE_FETCH_TIMEOUT_MS),
+    });
+    // A response this loader will not read still owns its transport until the
+    // body is released, so every rejection path cancels before returning.
+    const discard = async () => {
+      try {
+        await resp.body?.cancel();
+      } catch {
+        /* no-op */
+      }
+      return [];
+    };
+    if (resp.status >= 300 && resp.status < 400) {
+      console.warn(
+        '[CCTV] Seattle catalog redirected; redirects are not followed',
+      );
+      return discard();
+    }
+    if (!resp.ok) {
+      console.warn('[CCTV] Seattle camera download failed:', resp.status);
+      return discard();
+    }
+    const payload = await readResponseJsonCapped(
+      resp,
+      SEATTLE_MAX_CATALOG_BYTES,
+    );
+    // ArcGIS truncates a query at the layer's maxRecordCount (2,000) and says
+    // so rather than paging; the city is ~400 rows, so this only fires if the
+    // layer grows past it, and then it should be loud, not silent.
+    if (
+      payload?.exceededTransferLimit ||
+      payload?.properties?.exceededTransferLimit
+    ) {
+      console.warn(
+        '[CCTV] Seattle catalog was truncated by the layer record limit',
+      );
+    }
+    const features = Array.isArray(payload?.features) ? payload.features : [];
+    const cameras = [];
+    const seen = new Set();
+    for (const feature of features) {
+      const camera = seattleCameraToSource(feature);
+      if (!camera || seen.has(camera.id)) continue;
+      seen.add(camera.id);
+      cameras.push(camera);
+    }
+    const maxRaw = Number(
+      process.env.CCTV_SEATTLE_MAX_SOURCES || DEFAULT_SEATTLE_MAX_SOURCES,
+    );
+    const maxCount = Number.isFinite(maxRaw)
+      ? Math.max(8, Math.min(600, Math.floor(maxRaw)))
+      : DEFAULT_SEATTLE_MAX_SOURCES;
+    const prioritized = prioritizeSources(cameras, maxCount, [
+      SEATTLE_DOWNTOWN,
+    ]);
+    console.log(
+      `[CCTV] Loaded Seattle camera sources: ${cameras.length} (using nearest ${prioritized.length})`,
+    );
+    return prioritized;
+  } catch (error) {
+    console.warn(
+      '[CCTV] Seattle camera download error:',
       error?.message || error,
     );
     return [];

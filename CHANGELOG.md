@@ -14,6 +14,15 @@
   test now sums every pack's default and fails if they exceed the cap
   (bassem chagra, #644).
 
+- Add the City of Seattle's SDOT traffic cameras as a CCTV pack. The camera
+  list is one keyless GeoJSON query against the City's ArcGIS open-data layer,
+  filtered to SDOT-owned, in-service cameras so the WSDOT highway cameras the
+  same layer lists are never duplicated. Every live camera loads (~390) under a
+  "Seattle" category; frames are pinned to the City's trafficcams path and
+  upgraded to HTTPS. Headings are low-confidence priors (the filename axis and
+  corner tokens are not bearings). `CCTV_SEATTLE_ENABLED=0` disables the pack
+  and `CCTV_SEATTLE_MAX_SOURCES` caps it.
+
 - Treat explicitly current, complete empty vessel coverage as a successful update,
   clearing obsolete contacts while retaining stale or incomplete snapshots.
 

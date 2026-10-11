@@ -367,6 +367,17 @@ export function isLikelyCalgaryCoordinate(lat, lon) {
   );
 }
 
+/** Seattle city limits, with slack for the shoreline and the city line. */
+export function isLikelySeattleCoordinate(lat, lon) {
+  return (
+    isPlausibleLatLon(lat, lon) &&
+    lat >= 47.45 &&
+    lat <= 47.8 &&
+    lon >= -122.48 &&
+    lon <= -122.2
+  );
+}
+
 /** Mainland Norway, with slack for the coast and the Finnmark border. */
 export function isLikelyNorwayCoordinate(lat, lon) {
   return (
