@@ -11,7 +11,11 @@ import {
   RUNTIME_CONFIG_KEYS,
   runtimeConfigScript,
 } from '../server/standalone/runtime-config.js';
-import { runtimeKey } from './runtimeConfig.js';
+import {
+  DEFAULT_HOME_VIEW,
+  runtimeHomeView,
+  runtimeKey,
+} from './runtimeConfig.js';
 
 const proxies = parseTrustedProxies('10.244.0.0/16, 192.168.1.5');
 
@@ -180,6 +184,7 @@ test('the runtime config script carries only the public browser keys', () => {
     MAPILLARY_CLIENT_TOKEN: 'MLY|x</script>',
     OPENAI_API_KEY: 'sk-secret',
     GOOGLE_MAPS_SERVER_API_KEY: 'server-secret',
+    GEV_HOME_VIEW: '1.5,2.5,300',
   });
   assert.doesNotMatch(script, /sk-secret|server-secret|<\/script>/);
   const sandbox = {};
@@ -187,9 +192,11 @@ test('the runtime config script carries only the public browser keys', () => {
   assert.deepEqual({ ...sandbox.__GEV_RUNTIME_CONFIG__ }, {
     googleApiKey: 'g-key',
     mapillaryToken: 'MLY|x</script>',
+    homeView: '1.5,2.5,300',
   });
   assert.deepEqual(Object.values(RUNTIME_CONFIG_KEYS).sort(), [
     'CESIUM_ION_TOKEN',
+    'GEV_HOME_VIEW',
     'GOOGLE_MAPS_API_KEY',
     'MAPILLARY_CLIENT_TOKEN',
   ]);
@@ -208,4 +215,29 @@ test('runtime keys win over build-time keys, and blanks fall back', () => {
     if (previous === undefined) delete globalThis.__GEV_RUNTIME_CONFIG__;
     else globalThis.__GEV_RUNTIME_CONFIG__ = previous;
   }
+});
+
+test('GEV_HOME_VIEW sets the startup view; unusable values keep Austin', () => {
+  assert.equal(runtimeHomeView(undefined), DEFAULT_HOME_VIEW);
+  assert.equal(runtimeHomeView(' '), DEFAULT_HOME_VIEW);
+  assert.deepEqual(
+    { ...runtimeHomeView(' 10.25, -20.5 ') },
+    { lat: 10.25, lon: -20.5, height: DEFAULT_HOME_VIEW.height, label: null },
+  );
+  assert.deepEqual(
+    { ...runtimeHomeView('10,20,5000') },
+    { lat: 10, lon: 20, height: 5000, label: null },
+  );
+  for (const bad of [
+    '10',
+    '10,',
+    '91,0',
+    '0,181',
+    '0,0,0',
+    '0,0,-5',
+    'a,b',
+    '1,2,3,4',
+    '0,0,99999999',
+  ])
+    assert.equal(runtimeHomeView(bad), DEFAULT_HOME_VIEW, bad);
 });

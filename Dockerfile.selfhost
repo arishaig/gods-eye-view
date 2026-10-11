@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1
 #
-# Production-style image (the repo Dockerfile is the compose dev-server image): the built app served by `vite preview`, which runs the same
+# Production-style image (the repo Dockerfile is the compose dev-server
+# image): the built app served by `vite preview`, which runs the same
 # provider routes as the dev server. Keys are not baked in: pass them as
 # environment variables at run time. See docs/SELF-HOSTING.md.
 #
