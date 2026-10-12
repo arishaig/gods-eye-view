@@ -12,7 +12,9 @@ export const DEFAULT_AUSTIN_MAX_SOURCES = 250;
  * default per-pack caps so a default install never trims.
  */
 export const DEFAULT_CCTV_MAX_SOURCES = 4000;
-/** Hard upper bound for CCTV_MAX_SOURCES; also sizes the health map. */
+/** Hard upper bound for CCTV_MAX_SOURCES and for each per-pack
+ * CCTV_<PACK>_MAX_SOURCES, so any one pack can be raised to load its whole
+ * feed; also sizes the health map. */
 export const CCTV_MAX_SOURCES_CEILING = 5000;
 /** Reference point for Austin camera prioritization (Congress & 6th). */
 export const AUSTIN_DOWNTOWN = { lat: 30.2672, lon: -97.7431 };
