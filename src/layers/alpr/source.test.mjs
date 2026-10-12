@@ -217,6 +217,41 @@ test('a whole-city view loads cameras and reports the tiles it covers', async ()
     assert.ok(snapshot.coverage[key] >= city[key]);
 });
 
+test('extract tiles answered 404 read as empty, not as an outage', async () => {
+  // Near the border both extracts cover the view; Canada has no tiles there and
+  // most US tiles are water or forest, which the extract host answers with 404.
+  let served = false;
+  const source = createAlprTileSource({
+    tileFetchImpl: async (url) => {
+      if (url.endsWith('.json'))
+        return Response.json(metadata(url.includes('-ca-') ? 'ca' : 'us'));
+      if (url.includes('-us-') && !served) {
+        served = true;
+        return new Response(fixture);
+      }
+      return new Response('Not Found', { status: 404 });
+    },
+  });
+  const border = { south: 47.5, north: 47.7, west: -122.45, east: -122.25 };
+  const snapshot = await source.fetch(border);
+  assert.ok(snapshot.records.length > 0);
+  assert.equal(snapshot.saturated, false);
+  assert.equal(snapshot.noCoverage, false);
+  assert.notDeepEqual(snapshot.coverage, border);
+});
+
+test('a 404 for every extract tile is an empty view', async () => {
+  const source = createAlprTileSource({
+    tileFetchImpl: async (url) =>
+      url.endsWith('.json')
+        ? Response.json(metadata(url.includes('-ca-') ? 'ca' : 'us'))
+        : new Response('Not Found', { status: 404 }),
+  });
+  const snapshot = await source.fetch(austin);
+  assert.deepEqual(snapshot.records, []);
+  assert.equal(snapshot.saturated, false);
+});
+
 test('coarser tiles never move a camera a finer tile already placed', () => {
   const cache = createAlprPrecisionCache(2);
   const fine = {

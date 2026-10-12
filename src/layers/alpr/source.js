@@ -77,6 +77,8 @@ export function createAlprTileSource({
       fetchImpl: tileFetchImpl,
       maxTiles: DETAIL_MAX_TILES,
       ttlMs: 60 * 60 * 1000,
+      // The extract serves 404, not an empty tile, where nothing is mapped.
+      emptyTileStatuses: [404],
     }),
   );
   const precision = createAlprPrecisionCache();
