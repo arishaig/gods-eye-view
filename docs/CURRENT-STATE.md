@@ -1008,13 +1008,47 @@ Destroying the UI removes these listeners before asynchronous teardown.
 `ui/input` supplies the bubbling application shortcut listener and generated
 shader-parameter rows. Number/style keys, H/O/V/F/D/C actions, native form-control
 typing and Escape behavior retain their existing mappings. Capture-phase
-surfaces continue to arbitrate their own keyboard events first.
+surfaces continue to arbitrate their own keyboard events first, and a key another
+handler has already claimed (`preventDefault`) is not handled again; keyboard
+flight's fly mode uses this to shadow D and F.
 
 The UI facade retains shader values, share-restore authority, render requests,
 search dismissal, visibility and Cockpit portal policy. Parameter rows preserve
 labels, bounds, steps and precision. Rebuilding rows removes their previous
 listeners; disposal removes shortcuts and parameter listeners synchronously
 before asynchronous application teardown.
+
+## Keyboard flight
+
+`src/ui/keyboardFlight.js` flies the camera with held keys; the step math
+lives in `src/keyboardFlightMath.js`. Arrow Up/Down move forward and back, Arrow
+Left/Right strafe, Q/E turn and Page Up/Down climb and descend. G toggles fly mode, which
+adds W/A/S/D (move, strafe) and R/F (climb, descend) and shadows the D
+(Detection) and F (Data Layers) shortcuts until G or Escape turns it off; the
+body carries `keyboard-fly-mode` while it is on. Keys are matched by
+`KeyboardEvent.code`, so they keep their positions on any layout. Letter keys
+and Escape follow the application shortcuts and yield only to text editing
+(inputs, selects, textareas, contenteditable), so a focused toolbar button
+never lets a fly-mode D reach Detection; arrows and paging fly only when the
+globe (the body, root or canvas) is the key target, so focused widgets keep
+them. Ctrl/Meta/Alt chords and keys already claimed are ignored.
+
+Forward follows the heading projected on the ground at a constant height, so a
+pitched view never dives. Speed is about one height-above-ground per second
+(15 m/s floor, 3,000 km/s ceiling; Shift ×5), frames are clamped to 100 ms,
+and descent stops 10 m above the highest surface known under the camera: the
+globe height every frame and `scene.sampleHeight()` (which sees photoreal
+tiles) five times a second. The maximum wins because the pick can answer a
+coarse surface far below the terrain.
+The first key of a gesture takes navigation authority through
+`NavigationController.beginKeyboardFlight()`: the stamp ends follow, orbit,
+camera verbs, arrivals and Director playback like any destination, and vessel
+selection survives. A running Cesium `flyTo` (which switches camera inputs off)
+is cancelled the way a drag cancels it; inputs still off afterwards mean a tool
+(Cockpit, CCTV gizmo, box select, GeoJSON editing) owns the camera, and the
+gesture is refused. Another owner's handoff, window blur or a hidden tab ends
+the gesture. A continuous-render hold (`keyboard-flight`) lasts only while keys
+are held. `scripts/qa-keyboard-flight.mjs` is the browser gate.
 
 ## Adaptive panel rail layout
 

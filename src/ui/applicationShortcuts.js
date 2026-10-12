@@ -10,8 +10,10 @@ const STYLE_KEYS = Object.freeze({
 
 /**
  * Bind the application's existing bubbling keyboard shortcuts.
- * Capture-phase surfaces keep first refusal. The caller owns each action and
- * persistence; form controls keep native typing except for Escape.
+ * Capture-phase surfaces keep first refusal, and a key another handler has
+ * already claimed (preventDefault) is left alone, except that Escape still
+ * dismisses search. The caller owns each action and persistence; form
+ * controls keep native typing except for Escape.
  * @param {object} options
  * @param {Document} options.documentRef Keyboard event target.
  * @param {HTMLElement} options.searchInput Additional editing target.
@@ -24,6 +26,7 @@ export function bindApplicationShortcuts({
   actions,
 }) {
   const onKeyDown = (event) => {
+    if (event.defaultPrevented && event.key !== 'Escape') return;
     const isFormControl =
       event.target?.matches?.('select, input, textarea') ||
       event.target === searchInput;
