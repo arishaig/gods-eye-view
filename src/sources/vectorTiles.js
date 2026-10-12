@@ -195,6 +195,7 @@ export function createVectorTileSource({
   maxCacheBytes = 24 * 1024 * 1024,
   maxResponseBytes = 4 * 1024 * 1024,
   metadataCooldownMs = 5000,
+  emptyTileStatuses = [],
   now = Date.now,
   sharedDecodedCache = null,
   selectDecoded = (value) => value,
@@ -442,25 +443,33 @@ export function createVectorTileSource({
           .replace('{x}', tile.x)
           .replace('{y}', tile.y);
         const fetchStart = performance.now();
-        const bytes = await request(
-          url,
-          ownedSignal,
-          async (res, requestSignal) => {
-            const bodyStart = performance.now();
-            const value = await readResponseBytesCapped(
-              res,
-              maxResponseBytes,
-              requestSignal,
-            );
-            phaseTiming('tile-body-read', bodyStart, {
-              source: allowedOrigin,
-              key,
-              bytes: value.byteLength,
-            });
-            return value;
-          },
-          !sharedOwnership,
-        );
+        let bytes;
+        try {
+          bytes = await request(
+            url,
+            ownedSignal,
+            async (res, requestSignal) => {
+              const bodyStart = performance.now();
+              const value = await readResponseBytesCapped(
+                res,
+                maxResponseBytes,
+                requestSignal,
+              );
+              phaseTiming('tile-body-read', bodyStart, {
+                source: allowedOrigin,
+                key,
+                bytes: value.byteLength,
+              });
+              return value;
+            },
+            !sharedOwnership,
+          );
+} catch (error) {
+          // Some sparse extracts answer 404 for a tile with no features
+          // rather than serving an empty one; decode those as empty.
+          if (!emptyTileStatuses.includes(error.status)) throw error;
+          bytes = new Uint8Array(0);
+        }
         phaseTiming('tile-fetch', fetchStart, {
           source: allowedOrigin,
           key,
