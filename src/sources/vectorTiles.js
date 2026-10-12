@@ -46,6 +46,7 @@ export function createVectorTileSource({
   maxCacheBytes = 24 * 1024 * 1024,
   maxResponseBytes = 4 * 1024 * 1024,
   metadataCooldownMs = 5000,
+  emptyTileStatuses = [],
   now = Date.now,
 }) {
   const cache = new Map();
@@ -284,9 +285,17 @@ export function createVectorTileSource({
             .replace('{x}', tile.x)
             .replace('{y}', tile.y);
           const fetchStart = performance.now();
-          const bytes = await request(url, ownedSignal, (res, requestSignal) =>
-            readResponseBytesCapped(res, maxResponseBytes, requestSignal),
-          );
+          let bytes;
+          try {
+            bytes = await request(url, ownedSignal, (res, requestSignal) =>
+              readResponseBytesCapped(res, maxResponseBytes, requestSignal),
+            );
+          } catch (error) {
+            // Some sparse extracts answer 404 for a tile with no features
+            // rather than serving an empty one; decode those as empty.
+            if (!emptyTileStatuses.includes(error.status)) throw error;
+            bytes = new Uint8Array(0);
+          }
           phaseTiming('tile-fetch', fetchStart, {
             source: allowedOrigin,
             key,

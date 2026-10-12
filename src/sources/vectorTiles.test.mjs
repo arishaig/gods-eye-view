@@ -245,3 +245,45 @@ test('an explicit allowedOrigin still wins over the one derived from tileJsonUrl
     'https://tiles.example/planet/{z}/{x}/{y}.pbf',
   );
 });
+
+test('404 tiles fail by default and decode as empty when listed in emptyTileStatuses', async () => {
+  const decoded = [];
+  const fetchImpl = async () => new Response('Not Found', { status: 404 });
+  const strict = createVectorTileSource({
+    ...options,
+    template: meta.tiles[0],
+    fetchImpl,
+  });
+  await assert.rejects(strict.fetchBounds(box, { zoom: 14 }), { status: 404 });
+
+  let calls = 0;
+  const lenient = createVectorTileSource({
+    ...options,
+    template: meta.tiles[0],
+    emptyTileStatuses: [404],
+    decode: (bytes) => {
+      decoded.push(bytes.byteLength);
+      return [];
+    },
+    fetchImpl: async (...args) => {
+      calls++;
+      return fetchImpl(...args);
+    },
+  });
+  const result = await lenient.fetchBounds(box, { zoom: 14 });
+  assert.equal(result.partial, false);
+  assert.deepEqual(result.tiles, [[]]);
+  assert.deepEqual(decoded, [0]);
+  await lenient.fetchBounds(box, { zoom: 14 });
+  assert.equal(calls, 1, 'an empty tile is cached like any other');
+});
+
+test('emptyTileStatuses leaves other failures as errors', async () => {
+  const source = createVectorTileSource({
+    ...options,
+    template: meta.tiles[0],
+    emptyTileStatuses: [404],
+    fetchImpl: async () => new Response('', { status: 503 }),
+  });
+  await assert.rejects(source.fetchBounds(box, { zoom: 14 }), { status: 503 });
+});
