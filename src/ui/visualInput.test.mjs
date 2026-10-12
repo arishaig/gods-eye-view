@@ -125,6 +125,13 @@ test('shortcut extraction does not change repeat or modifier policy', () => {
   assert.deepEqual(f.calls, [['toggleHud']]);
 });
 
+test('a key another handler claimed is skipped, but Escape still dismisses search', () => {
+  const f = shortcuts();
+  f.press('d', new Element(), { defaultPrevented: true });
+  f.press('Escape', new Element(), { defaultPrevented: true });
+  assert.deepEqual(f.calls, [['dismissSearch']]);
+});
+
 test('destroy synchronously removes shortcuts and a replacement binds once', () => {
   const f = shortcuts();
   f.controller.destroy();

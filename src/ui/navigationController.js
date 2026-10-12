@@ -219,6 +219,23 @@ export class NavigationController {
     });
   }
 
+  /**
+   * Take the camera for a held-key flight. Like a destination, it ends follow,
+   * orbit and pending flights; vessel selection survives. Cockpit refuses
+   * silently, since its camera inputs are already off.
+   */
+  beginKeyboardFlight() {
+    return Boolean(
+      runExplicitNavigation({
+        disposed: this._disposed,
+        cockpitActive: this.isCockpitActive(),
+        stamp: () => this._stampNavigation(),
+        release: () => this._releaseFollowCamera(),
+        navigate: () => true,
+      }),
+    );
+  }
+
   _beginDeferredNavigation(
     noun = 'location',
     { cancelPendingSelection = true } = {},
