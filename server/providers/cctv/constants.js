@@ -14,11 +14,18 @@ export const DEFAULT_AUSTIN_MAX_SOURCES = 250;
  * the sum of the default per-pack caps so a default install never trims
  * (enforced by cctvCatalogCap.test.mjs). The per-pack defaults reach 5,604
  * with WSDOT, City of Seattle and Statens vegvesen, so this is 6,000: the full
- * CCTV_MAX_SOURCES_CEILING, which also sizes the health map.
+ * CCTV_MAX_SOURCES_CEILING.
  */
 export const DEFAULT_CCTV_MAX_SOURCES = 6000;
-/** Hard upper bound for CCTV_MAX_SOURCES; also sizes the health map. */
+/** Hard upper bound for CCTV_MAX_SOURCES and for each per-pack
+ * CCTV_<PACK>_MAX_SOURCES, so any one pack can be raised to load its whole
+ * feed. */
 export const CCTV_MAX_SOURCES_CEILING = 6000;
+/** Cap on per-camera health entries. Every loaded camera stays registered
+ * (the global list is only the first CCTV_MAX_SOURCES of them), so raised
+ * packs can together exceed the ceiling; this sits well above any realistic
+ * registry so a servable camera's status is never evicted. */
+export const CCTV_HEALTH_MAX_ENTRIES = 50_000;
 /** Reference point for Austin camera prioritization (Congress & 6th). */
 export const AUSTIN_DOWNTOWN = { lat: 30.2672, lon: -97.7431 };
 /** Caltrans CCTV: one JSON feed per district, identical schema statewide. */

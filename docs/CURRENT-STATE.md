@@ -925,7 +925,7 @@ DriveBC's eight compass orientations become high-confidence heading priors, and
 its elevation (metres above sea level) seeds the ground height.
 
 By default the 250 cameras nearest downtown Vancouver and Victoria load.
-`CCTV_DRIVEBC_MAX_SOURCES` sets the pack cap (8–1200) and
+`CCTV_DRIVEBC_MAX_SOURCES` sets the pack cap (8 up to `CCTV_MAX_SOURCES_CEILING`) and
 `CCTV_DRIVEBC_ENABLED=0` turns the pack off. The default catalog cap rises from
 900 to 1,050, the sum of the default pack caps, so no default camera is dropped.
 The Open Government Licence – British Columbia attribution is registered in the

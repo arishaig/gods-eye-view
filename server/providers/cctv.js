@@ -14,7 +14,7 @@ import {
 } from './cctv/media.js';
 import {
   CCTV_FRAME_FETCH_TIMEOUT_MS,
-  CCTV_MAX_SOURCES_CEILING,
+  CCTV_HEALTH_MAX_ENTRIES,
 } from './cctv/constants.js';
 import { sanitizeCctvRangeHeader } from './cctv/range.js';
 import {
@@ -45,10 +45,9 @@ export function cctvProxy({ sourceRoot = process.cwd() } = {}) {
   const getCctvSources = createCctvCatalog({ sourceRoot });
   /** @type {Map<string,{id:string,status:string,sourceKind:string,label:string,message:string,updatedAt:number}>} */
   const health = new Map();
-  /** Cap on health map entries to prevent unbounded growth. Sized to the
-   * CCTV_MAX_SOURCES ceiling so health/status observability is never evicted
-   * for any catalog the proxy can actually serve. */
-  const HEALTH_MAX_ENTRIES = CCTV_MAX_SOURCES_CEILING;
+  /** Cap on health map entries to prevent unbounded growth; see
+   * CCTV_HEALTH_MAX_ENTRIES. */
+  const HEALTH_MAX_ENTRIES = CCTV_HEALTH_MAX_ENTRIES;
   /** Live HLS strategies (see ./cctv/stream.js). Shared across dev and preview. */
   const puller = createHlsPuller();
 
