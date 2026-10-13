@@ -98,9 +98,15 @@ export function flightSpeedMps(heightAboveGroundM, boost = false) {
  * @param {number} options.height Ellipsoidal metres.
  * @param {number} options.heading Radians, clockwise from north.
  * @param {number} [options.groundHeight=0] Surface height under the camera.
+ * @param {number} [options.speedGroundHeight] Surface height that sets the
+ * speed; a smoothed reading keeps a rooftop under the camera from jerking it.
+ * Defaults to `groundHeight`.
  * @param {{forward: number, right: number, up: number, turn: number}} options.axes
  * @param {number} options.dtSec Frame time; long stalls are clamped.
  * @param {boolean} [options.boost=false] Whether Shift is held.
+ * @param {number} [options.liftSec=0] When a higher surface turns up under a
+ * camera already below the floor, rise to it over about this long instead of
+ * snapping. Descent always stops at the floor.
  * @returns {{longitude: number, latitude: number, height: number, heading: number}|null}
  * The next pose, or null when nothing moves.
  */
@@ -110,9 +116,11 @@ export function planFlightStep({
   height,
   heading,
   groundHeight = 0,
+  speedGroundHeight = groundHeight,
   axes,
   dtSec,
   boost = false,
+  liftSec = 0,
 }) {
   if (
     ![longitude, latitude, height, heading, dtSec].every(Number.isFinite) ||
@@ -124,7 +132,10 @@ export function planFlightStep({
   if (!forward && !right && !up && !turn) return null;
   const dt = Math.min(MAX_STEP_SEC, dtSec);
   const ground = Number.isFinite(groundHeight) ? groundHeight : 0;
-  const distance = flightSpeedMps(height - ground, boost) * dt;
+  const speedGround = Number.isFinite(speedGroundHeight)
+    ? speedGroundHeight
+    : ground;
+  const distance = flightSpeedMps(height - speedGround, boost) * dt;
 
   const sin = Math.sin(heading);
   const cos = Math.cos(heading);
@@ -137,10 +148,16 @@ export function planFlightStep({
   );
   const nextLongitude =
     longitude + east / (radius * Math.max(Math.cos(latitude), 1e-3));
-  const nextHeight = Math.max(
-    ground + MIN_FLIGHT_CLEARANCE_M,
-    height + up * distance,
-  );
+  const floor = ground + MIN_FLIGHT_CLEARANCE_M;
+  let nextHeight = height + up * distance;
+  if (nextHeight < floor)
+    nextHeight =
+      height >= floor || !(liftSec > 0)
+        ? floor
+        : Math.max(
+            nextHeight,
+            height + (floor - height) * Math.min(1, dt / liftSec),
+          );
   const nextHeading = heading + turn * TURN_RATE_RAD_PER_SEC * dt;
   const TWO_PI = Math.PI * 2;
   return {
