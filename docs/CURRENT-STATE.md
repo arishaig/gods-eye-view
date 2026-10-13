@@ -1041,7 +1041,10 @@ globe height every frame and, five times a second, the photoreal tileset's
 own `getHeight()` (a CPU ray-cast against loaded tiles; `scene.sampleHeight()`
 is only the fallback where the tileset has nothing loaded, because its pick
 pass hitches the frame and pulls tile loading toward the probe). The maximum
-wins because a coarse surface can answer far below the terrain. While keys are
+wins because a coarse surface can answer far below the terrain. Speed follows
+a smoothed copy of that reading (0.4 s time constant) so a rooftop does not
+jerk the glide, and a higher floor found under the camera lifts it over about
+0.25 s instead of snapping; descent still stops hard. While keys are
 held the tileset keeps streaming: `cullRequestsWhileMoving` is off,
 `foveatedTimeDelay` is 0 and `loadSiblings` is on, and all three are restored
 when the gesture ends.

@@ -8,6 +8,10 @@ import {
 const RENDER_OWNER = 'keyboard-flight';
 const FLY_MODE_KEY = 'g';
 const GROUND_SAMPLE_MS = 200;
+/** Time constant for the ground reading that sets speed. */
+const SPEED_GROUND_SMOOTHING_SEC = 0.4;
+/** How long a newly found higher floor takes to lift the camera. */
+const FLOOR_LIFT_SEC = 0.25;
 const EDITING_SELECTOR = 'input, textarea, select, [contenteditable]';
 
 /**
@@ -194,6 +198,7 @@ export function bindKeyboardFlight({
   let boost = false;
   let claiming = false;
   let lastFrameMs = null;
+  let speedGroundM = Number.NaN;
   let destroyed = false;
 
   const nowMs = () => windowRef?.performance?.now?.() ?? Date.now();
@@ -273,6 +278,7 @@ export function bindKeyboardFlight({
       // The clock starts at the key press, so even a tap on a slow frame moves.
       lastFrameMs = nowMs();
       ground.reset();
+      speedGroundM = Number.NaN;
       restoreStreaming = streamWhileFlying(findPhotorealTileset(scene));
       holdContinuousRender(RENDER_OWNER);
     }
@@ -298,15 +304,26 @@ export function bindKeyboardFlight({
 
     const cartographic = Cesium.Cartographic.fromCartesian(camera.positionWC);
     if (!cartographic) return;
+    // The floor reading steps a few times a second and jumps at every
+    // rooftop; speed follows a smoothed copy so the glide stays even.
+    const groundM = ground.read(cartographic);
+    if (Number.isFinite(groundM))
+      speedGroundM = Number.isFinite(speedGroundM)
+        ? speedGroundM +
+          (groundM - speedGroundM) *
+            Math.min(1, dtSec / SPEED_GROUND_SMOOTHING_SEC)
+        : groundM;
     const next = planFlightStep({
       longitude: cartographic.longitude,
       latitude: cartographic.latitude,
       height: cartographic.height,
       heading: camera.heading,
-      groundHeight: ground.read(cartographic),
+      groundHeight: groundM,
+      speedGroundHeight: speedGroundM,
       axes: flightAxes(held, flyMode),
       dtSec,
       boost,
+      liftSec: FLOOR_LIFT_SEC,
     });
     if (!next) return;
     camera.setView({
