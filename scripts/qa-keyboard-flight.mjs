@@ -104,11 +104,16 @@ try {
   const duringFlight = await streaming();
   await page.keyboard.up('ArrowUp');
   const afterFlight = await streaming();
-  check(
-    'tiles keep streaming during a gesture and settle back after it',
-    duringFlight === null || (duringFlight === false && afterFlight === true),
-    JSON.stringify({ duringFlight, afterFlight }),
-  );
+  if (duringFlight === null)
+    console.log(
+      '[SKIP] tiles keep streaming during a gesture (no photoreal tileset)',
+    );
+  else
+    check(
+      'tiles keep streaming during a gesture and settle back after it',
+      duringFlight === false && afterFlight === true,
+      JSON.stringify({ duringFlight, afterFlight }),
+    );
 
   await hold('KeyE');
   const turned = await pose();

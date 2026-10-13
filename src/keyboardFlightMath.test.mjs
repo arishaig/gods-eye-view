@@ -137,6 +137,40 @@ test('descending stops at the minimum clearance above the ground', () => {
   assert.ok(climb.height > 1_000);
 });
 
+test('a smoothed ground sets the speed while the raw ground sets the floor', () => {
+  // A rooftop 900 m up appears under a camera at 1,000 m: speed follows the
+  // smoothed 0 m surface, not a sudden 100 m clearance.
+  const step = planFlightStep({
+    ...pose({ groundHeight: 900, speedGroundHeight: 0 }),
+    axes: axes({ forward: 1 }),
+  });
+  const metres = step.latitude * (6_371_000 + 1_000);
+  assert.ok(Math.abs(metres - 1_000 * 0.05) < 1e-6);
+});
+
+test('a higher floor found under the camera lifts it over liftSec, not at once', () => {
+  const eased = planFlightStep({
+    ...pose({ height: 400, groundHeight: 500, dtSec: 0.05 }),
+    axes: axes({ forward: 1 }),
+    liftSec: 0.25,
+  });
+  const floor = 500 + MIN_FLIGHT_CLEARANCE_M;
+  assert.ok(eased.height > 400 && eased.height < floor);
+  assert.ok(Math.abs(eased.height - (400 + (floor - 400) * 0.2)) < 1e-9);
+  const snapped = planFlightStep({
+    ...pose({ height: 400, groundHeight: 500 }),
+    axes: axes({ forward: 1 }),
+  });
+  assert.equal(snapped.height, floor, 'no liftSec snaps as before');
+  // Above the floor, descent still stops hard at it.
+  const descent = planFlightStep({
+    ...pose({ height: 511, groundHeight: 500, dtSec: 0.1 }),
+    axes: axes({ up: -1 }),
+    liftSec: 0.25,
+  });
+  assert.equal(descent.height, floor);
+});
+
 test('turning wraps the heading and leaves position alone', () => {
   const step = planFlightStep({
     ...pose({ heading: 359 * DEG }),
