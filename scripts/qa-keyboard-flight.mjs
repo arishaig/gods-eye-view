@@ -26,7 +26,9 @@ const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
 let failures = 0;
 const check = (name, passed, detail = '') => {
-  console.log(`[${passed ? 'PASS' : 'FAIL'}] ${name}${detail ? ` ${detail}` : ''}`);
+  console.log(
+    `[${passed ? 'PASS' : 'FAIL'}] ${name}${detail ? ` ${detail}` : ''}`,
+  );
   if (!passed) failures += 1;
 };
 const pose = () =>
@@ -87,6 +89,31 @@ try {
       Math.abs(forward.height - start.height) < start.height * 0.05,
     JSON.stringify({ start, forward }),
   );
+
+  const streaming = () =>
+    page.evaluate(() => {
+      const primitives = window.__godsEyeView.viewer.scene.primitives;
+      for (let i = 0; i < primitives.length; i++) {
+        const p = primitives.get(i);
+        if (typeof p?.cullRequestsWhileMoving === 'boolean' && p.show)
+          return p.cullRequestsWhileMoving;
+      }
+      return null;
+    });
+  await page.keyboard.down('ArrowUp');
+  const duringFlight = await streaming();
+  await page.keyboard.up('ArrowUp');
+  const afterFlight = await streaming();
+  if (duringFlight === null)
+    console.log(
+      '[SKIP] tiles keep streaming during a gesture (no photoreal tileset)',
+    );
+  else
+    check(
+      'tiles keep streaming during a gesture and settle back after it',
+      duringFlight === false && afterFlight === true,
+      JSON.stringify({ duringFlight, afterFlight }),
+    );
 
   await hold('KeyE');
   const turned = await pose();
@@ -158,7 +185,8 @@ try {
   // A clicked toolbar button keeps focus; fly-mode letters must still fly
   // and never fall through to Detection.
   const buttonFocused = await page.evaluate(() => {
-    const button = document.getElementById('north-up-view') ||
+    const button =
+      document.getElementById('north-up-view') ||
       document.querySelector('button:not([disabled])');
     button.focus();
     return document.activeElement === button && button.tagName === 'BUTTON';
@@ -171,8 +199,8 @@ try {
     buttonFocused &&
       moved(buttonStart, await pose()) &&
       (await detection()) === beforeD &&
-      (await page.evaluate(
-        () => window.__godsEyeView.styleManager._keyboardFlight.isFlyMode(),
+      (await page.evaluate(() =>
+        window.__godsEyeView.styleManager._keyboardFlight.isFlyMode(),
       )),
   );
 
@@ -210,9 +238,10 @@ try {
   const released = await page.evaluate(async () => {
     const { viewer } = window.__godsEyeView;
     const entity = viewer.entities.add({
-      position: viewer.camera.pickEllipsoid(
-        { x: viewer.canvas.clientWidth / 2, y: viewer.canvas.clientHeight / 2 },
-      ),
+      position: viewer.camera.pickEllipsoid({
+        x: viewer.canvas.clientWidth / 2,
+        y: viewer.canvas.clientHeight / 2,
+      }),
       point: { pixelSize: 4 },
     });
     viewer.trackedEntity = entity;

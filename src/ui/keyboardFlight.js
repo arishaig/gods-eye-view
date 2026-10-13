@@ -8,6 +8,10 @@ import {
 const RENDER_OWNER = 'keyboard-flight';
 const FLY_MODE_KEY = 'g';
 const GROUND_SAMPLE_MS = 200;
+/** Time constant for the ground reading that sets speed. */
+const SPEED_GROUND_SMOOTHING_SEC = 0.4;
+/** How long a newly found higher floor takes to lift the camera. */
+const FLOOR_LIFT_SEC = 0.25;
 const EDITING_SELECTOR = 'input, textarea, select, [contenteditable]';
 
 /**
@@ -35,40 +39,74 @@ function targetsEditing(event) {
 }
 
 /**
+ * The photoreal tileset drawing the world, or null on the OSM fallback. Duck
+ * typed (like the ground snap's tile check) so a fake scene can stand in.
+ * @param {Cesium.Scene} scene Live scene.
+ * @returns {Cesium.Cesium3DTileset|null}
+ */
+export function findPhotorealTileset(scene) {
+  const primitives = scene?.primitives;
+  if (!primitives?.get) return null;
+  for (let i = 0; i < primitives.length; i++) {
+    const primitive = primitives.get(i);
+    if (
+      primitive?.show !== false &&
+      !primitive?.isDestroyed?.() &&
+      typeof primitive?.getHeight === 'function' &&
+      typeof primitive?.cullRequestsWhileMoving === 'boolean'
+    )
+      return primitive;
+  }
+  return null;
+}
+
+/**
  * Read the highest known surface under the camera. Photoreal tiles hide the
  * globe, so `globe.getHeight()` alone would put the floor at sea level
- * (Denver's ground is ~1,600 m above it); `scene.sampleHeight()` sees the
- * tiles but renders a pick pass and can answer a coarse surface far below the
- * terrain. Like the camera ground guard, the floor is therefore the highest
- * reading: the globe every frame (cheap), tiles a few times a second, and the
- * last reading when neither answers.
+ * (Denver's ground is ~1,600 m above it). The tileset's own `getHeight()`
+ * ray-casts the tiles already loaded on the CPU; `scene.sampleHeight()` would
+ * render a pick pass and pull tile loading toward the probe, a visible hitch
+ * several times a second, so it is only the fallback when no tileset answers.
+ * Like the camera ground guard, the floor is the highest reading (a coarse
+ * surface can answer far below the terrain), and the last reading stands when
+ * nothing answers.
  * @param {Cesium.Scene} scene Live scene.
  * @param {() => number} nowMs Clock in milliseconds.
  * @param {number} [intervalMs] Minimum time between tile samples.
+ * @param {() => Cesium.Cesium3DTileset|null} [getTileset] Tileset to ray-cast.
  * @returns {{read: (cartographic: Cesium.Cartographic) => number, reset: () => void}}
  */
 export function createGroundReader(
   scene,
   nowMs,
   intervalMs = GROUND_SAMPLE_MS,
+  getTileset = () => findPhotorealTileset(scene),
 ) {
   let sampledAt = -Infinity;
   let tilesM = Number.NaN;
   let groundM = Number.NaN;
+  const sampleTiles = (cartographic) => {
+    try {
+      const height = getTileset()?.getHeight(cartographic, scene);
+      if (Number.isFinite(height)) return height;
+    } catch {
+      /* tiles not streamed under this point yet */
+    }
+    if (scene.sampleHeightSupported === false) return Number.NaN;
+    try {
+      const height = scene.sampleHeight?.(cartographic);
+      if (Number.isFinite(height)) return height;
+    } catch {
+      /* tiles not streamed under this point yet */
+    }
+    return Number.NaN;
+  };
   return {
     read(cartographic) {
       const now = nowMs();
       if (now - sampledAt >= intervalMs) {
         sampledAt = now;
-        tilesM = Number.NaN;
-        if (scene.sampleHeightSupported !== false) {
-          try {
-            const height = scene.sampleHeight?.(cartographic);
-            if (Number.isFinite(height)) tilesM = height;
-          } catch {
-            /* tiles not streamed under this point yet */
-          }
-        }
+        tilesM = sampleTiles(cartographic);
       }
       const readings = [scene.globe?.getHeight?.(cartographic), tilesM].filter(
         Number.isFinite,
@@ -81,6 +119,37 @@ export function createGroundReader(
       tilesM = Number.NaN;
       groundM = Number.NaN;
     },
+  };
+}
+
+/**
+ * Tileset settings that keep tiles streaming while the camera never stops.
+ * Cesium drops requests for tiles it expects to fly past and defers the
+ * periphery during motion; a held key is all motion, so without these the
+ * view only fills in after the key is let go.
+ */
+const STREAMING_WHILE_FLYING = Object.freeze({
+  cullRequestsWhileMoving: false,
+  foveatedTimeDelay: 0,
+  loadSiblings: true,
+});
+
+/**
+ * Apply flight streaming settings to a tileset and return a restore function.
+ * @param {Cesium.Cesium3DTileset|null} tileset Tileset to tune.
+ * @returns {() => void} Puts the saved values back.
+ */
+export function streamWhileFlying(tileset) {
+  if (!tileset) return () => {};
+  const saved = {};
+  for (const [name, value] of Object.entries(STREAMING_WHILE_FLYING)) {
+    if (!(name in tileset)) continue;
+    saved[name] = tileset[name];
+    tileset[name] = value;
+  }
+  return () => {
+    if (tileset.isDestroyed?.()) return;
+    Object.assign(tileset, saved);
   };
 }
 
@@ -129,6 +198,7 @@ export function bindKeyboardFlight({
   let boost = false;
   let claiming = false;
   let lastFrameMs = null;
+  let speedGroundM = Number.NaN;
   let destroyed = false;
 
   const nowMs = () => windowRef?.performance?.now?.() ?? Date.now();
@@ -136,9 +206,13 @@ export function bindKeyboardFlight({
   const inputsEnabled = () =>
     scene.screenSpaceCameraController?.enableInputs !== false;
 
+  let restoreStreaming = null;
+
   const stop = () => {
     held.clear();
     lastFrameMs = null;
+    restoreStreaming?.();
+    restoreStreaming = null;
     releaseContinuousRender(RENDER_OWNER);
   };
 
@@ -204,6 +278,8 @@ export function bindKeyboardFlight({
       // The clock starts at the key press, so even a tap on a slow frame moves.
       lastFrameMs = nowMs();
       ground.reset();
+      speedGroundM = Number.NaN;
+      restoreStreaming = streamWhileFlying(findPhotorealTileset(scene));
       holdContinuousRender(RENDER_OWNER);
     }
     held.add(event.code);
@@ -228,15 +304,26 @@ export function bindKeyboardFlight({
 
     const cartographic = Cesium.Cartographic.fromCartesian(camera.positionWC);
     if (!cartographic) return;
+    // The floor reading steps a few times a second and jumps at every
+    // rooftop; speed follows a smoothed copy so the glide stays even.
+    const groundM = ground.read(cartographic);
+    if (Number.isFinite(groundM))
+      speedGroundM = Number.isFinite(speedGroundM)
+        ? speedGroundM +
+          (groundM - speedGroundM) *
+            Math.min(1, dtSec / SPEED_GROUND_SMOOTHING_SEC)
+        : groundM;
     const next = planFlightStep({
       longitude: cartographic.longitude,
       latitude: cartographic.latitude,
       height: cartographic.height,
       heading: camera.heading,
-      groundHeight: ground.read(cartographic),
+      groundHeight: groundM,
+      speedGroundHeight: speedGroundM,
       axes: flightAxes(held, flyMode),
       dtSec,
       boost,
+      liftSec: FLOOR_LIFT_SEC,
     });
     if (!next) return;
     camera.setView({
