@@ -1037,9 +1037,14 @@ Forward follows the heading projected on the ground at a constant height, so a
 pitched view never dives. Speed is about one height-above-ground per second
 (15 m/s floor, 3,000 km/s ceiling; Shift ×5), frames are clamped to 100 ms,
 and descent stops 10 m above the highest surface known under the camera: the
-globe height every frame and `scene.sampleHeight()` (which sees photoreal
-tiles) five times a second. The maximum wins because the pick can answer a
-coarse surface far below the terrain.
+globe height every frame and, five times a second, the photoreal tileset's
+own `getHeight()` (a CPU ray-cast against loaded tiles; `scene.sampleHeight()`
+is only the fallback where the tileset has nothing loaded, because its pick
+pass hitches the frame and pulls tile loading toward the probe). The maximum
+wins because a coarse surface can answer far below the terrain. While keys are
+held the tileset keeps streaming: `cullRequestsWhileMoving` is off,
+`foveatedTimeDelay` is 0 and `loadSiblings` is on, and all three are restored
+when the gesture ends.
 The first key of a gesture takes navigation authority through
 `NavigationController.beginKeyboardFlight()`: the stamp ends follow, orbit,
 camera verbs, arrivals and Director playback like any destination, and vessel
