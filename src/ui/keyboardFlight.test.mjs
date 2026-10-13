@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as Cesium from 'cesium';
-import { bindKeyboardFlight, createGroundReader } from './keyboardFlight.js';
+import {
+  bindKeyboardFlight,
+  createGroundReader,
+  findPhotorealTileset,
+  streamWhileFlying,
+} from './keyboardFlight.js';
 import { bindApplicationShortcuts } from './visualInput.js';
 
 class Target extends EventTarget {
@@ -23,7 +28,7 @@ class Target extends EventTarget {
   }
 }
 
-function fixture({ grant = true, enableInputs = true } = {}) {
+function fixture({ grant = true, enableInputs = true, tileset = null } = {}) {
   const documentRef = new Target('#document');
   const root = new Target('HTML');
   const body = new Target('BODY');
@@ -58,6 +63,10 @@ function fixture({ grant = true, enableInputs = true } = {}) {
     preRender,
     globe: { getHeight: () => 0 },
     screenSpaceCameraController: { enableInputs },
+    primitives: {
+      length: tileset ? 1 : 0,
+      get: () => tileset,
+    },
   };
   const calls = [];
   const handoffListeners = new Set();
@@ -295,6 +304,84 @@ test('the ground reader floors on the highest surface and throttles tile samples
     () => 0,
   );
   assert.ok(Number.isNaN(unsupported.read(at)));
+});
+
+function fakeTileset(height) {
+  return {
+    show: true,
+    cullRequestsWhileMoving: true,
+    foveatedTimeDelay: 0.2,
+    loadSiblings: false,
+    isDestroyed: () => false,
+    getHeight: () => height(),
+  };
+}
+
+test('the ground reader ray-casts the tileset and samples the scene only as a fallback', () => {
+  let nowMs = 0;
+  let mesh = 1_650;
+  let samples = 0;
+  const tileset = fakeTileset(() => mesh);
+  const scene = {
+    primitives: { length: 1, get: () => tileset },
+    sampleHeight: () => {
+      samples += 1;
+      return 1_600;
+    },
+    globe: { getHeight: () => undefined },
+  };
+  assert.equal(findPhotorealTileset(scene), tileset);
+  const ground = createGroundReader(scene, () => nowMs, 200);
+  const at = Cesium.Cartographic.fromDegrees(-104.99, 39.74);
+  assert.equal(ground.read(at), 1_650);
+  assert.equal(samples, 0, 'no pick pass while the tileset answers');
+
+  mesh = undefined;
+  nowMs = 250;
+  assert.equal(ground.read(at), 1_600, 'tiles not loaded here yet');
+  assert.equal(samples, 1);
+
+  tileset.show = false;
+  assert.equal(
+    findPhotorealTileset(scene),
+    null,
+    'a hidden tileset is skipped',
+  );
+});
+
+test('tiles keep streaming while a gesture is held and settle back after it', () => {
+  const ends = [
+    (f) => f.release('ArrowUp'),
+    (f) => f.handoff(),
+    (f) => f.windowRef.dispatchEvent(new Event('blur')),
+    (f) => f.controller.destroy(),
+  ];
+  for (const end of ends) {
+    const tileset = fakeTileset(() => 0);
+    const f = fixture({ tileset });
+    f.press('ArrowUp');
+    assert.equal(tileset.cullRequestsWhileMoving, false);
+    assert.equal(tileset.foveatedTimeDelay, 0);
+    assert.equal(tileset.loadSiblings, true);
+    f.frame();
+    end(f);
+    assert.equal(tileset.cullRequestsWhileMoving, true);
+    assert.equal(tileset.foveatedTimeDelay, 0.2);
+    assert.equal(tileset.loadSiblings, false);
+  }
+
+  // A refused gesture never touches the tileset.
+  const tileset = fakeTileset(() => 0);
+  fixture({ tileset, grant: false }).press('ArrowUp');
+  assert.equal(tileset.cullRequestsWhileMoving, true);
+
+  // A tileset destroyed mid-flight (map style switch) is left alone.
+  const gone = fakeTileset(() => 0);
+  const restore = streamWhileFlying(gone);
+  gone.isDestroyed = () => true;
+  restore();
+  assert.equal(gone.cullRequestsWhileMoving, false);
+  assert.doesNotThrow(() => streamWhileFlying(null)());
 });
 
 test('a refused gesture or a tool owning camera inputs never moves the camera', () => {
