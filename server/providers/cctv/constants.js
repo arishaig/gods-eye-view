@@ -13,11 +13,16 @@ export const DEFAULT_AUSTIN_MAX_SOURCES = 250;
  * a zoomed-in client fetches them with a bbox query (see bbox.js). Sized above the sum of the
  * default per-pack caps so a default install never trims.
  */
-export const DEFAULT_CCTV_MAX_SOURCES = 4000;
+export const DEFAULT_CCTV_MAX_SOURCES = 6000;
 /** Hard upper bound for CCTV_MAX_SOURCES and for each per-pack
  * CCTV_<PACK>_MAX_SOURCES, so any one pack can be raised to load its whole
- * feed; also sizes the health map. */
-export const CCTV_MAX_SOURCES_CEILING = 5000;
+ * feed. */
+export const CCTV_MAX_SOURCES_CEILING = 6000;
+/** Cap on per-camera health entries. Every loaded camera stays registered
+ * (the global list is only the first CCTV_MAX_SOURCES of them), so raised
+ * packs can together exceed the ceiling; this sits well above any realistic
+ * registry so a servable camera's status is never evicted. */
+export const CCTV_HEALTH_MAX_ENTRIES = 50_000;
 /** Reference point for Austin camera prioritization (Congress & 6th). */
 export const AUSTIN_DOWNTOWN = { lat: 30.2672, lon: -97.7431 };
 /** Caltrans CCTV: one JSON feed per district, identical schema statewide. */

@@ -2012,7 +2012,7 @@ export async function loadCataloniaSourcesFromOpenData() {
       process.env.CCTV_CATALONIA_MAX_SOURCES || DEFAULT_CATALONIA_MAX_SOURCES,
     );
     const maxCount = Number.isFinite(maxRaw)
-      ? Math.max(8, Math.min(600, Math.floor(maxRaw)))
+      ? Math.max(8, Math.min(CCTV_MAX_SOURCES_CEILING, Math.floor(maxRaw)))
       : DEFAULT_CATALONIA_MAX_SOURCES;
     const prioritized = prioritizeSources(unique, maxCount, CATALONIA_ANCHORS);
     console.log(
@@ -2234,7 +2234,7 @@ export async function loadHkSourcesFromOpenData() {
       process.env.CCTV_HK_MAX_SOURCES || DEFAULT_HK_MAX_SOURCES,
     );
     const maxCount = Number.isFinite(maxRaw)
-      ? Math.max(8, Math.min(1200, Math.floor(maxRaw)))
+      ? Math.max(8, Math.min(CCTV_MAX_SOURCES_CEILING, Math.floor(maxRaw)))
       : DEFAULT_HK_MAX_SOURCES;
     const prioritized = prioritizeSources(cameras, maxCount, HK_ANCHORS);
     console.log(
@@ -2496,7 +2496,7 @@ export async function loadKingCountySourcesFromOpenData() {
         DEFAULT_KING_COUNTY_MAX_SOURCES,
     );
     const maxCount = Number.isFinite(maxRaw)
-      ? Math.max(8, Math.min(1200, Math.floor(maxRaw)))
+      ? Math.max(8, Math.min(CCTV_MAX_SOURCES_CEILING, Math.floor(maxRaw)))
       : DEFAULT_KING_COUNTY_MAX_SOURCES;
     const prioritized = prioritizeSources(
       cameras,
@@ -2654,7 +2654,7 @@ export async function loadWsdotSourcesFromOpenData() {
       process.env.CCTV_WSDOT_MAX_SOURCES || DEFAULT_WSDOT_MAX_SOURCES,
     );
     const maxCount = Number.isFinite(maxRaw)
-      ? Math.max(8, Math.min(1200, Math.floor(maxRaw)))
+      ? Math.max(8, Math.min(CCTV_MAX_SOURCES_CEILING, Math.floor(maxRaw)))
       : DEFAULT_WSDOT_MAX_SOURCES;
     const prioritized = prioritizeSources(cameras, maxCount, WSDOT_ANCHORS);
     console.log(
@@ -2992,7 +2992,7 @@ export async function loadSeattleSourcesFromOpenData() {
       process.env.CCTV_SEATTLE_MAX_SOURCES || DEFAULT_SEATTLE_MAX_SOURCES,
     );
     const maxCount = Number.isFinite(maxRaw)
-      ? Math.max(8, Math.min(600, Math.floor(maxRaw)))
+      ? Math.max(8, Math.min(CCTV_MAX_SOURCES_CEILING, Math.floor(maxRaw)))
       : DEFAULT_SEATTLE_MAX_SOURCES;
     const prioritized = prioritizeSources(cameras, maxCount, [
       SEATTLE_DOWNTOWN,
@@ -3458,7 +3458,7 @@ export async function loadNycSourcesFromOpenData() {
       process.env.CCTV_NYC_MAX_SOURCES || DEFAULT_NYC_MAX_SOURCES,
     );
     const maxCount = Number.isFinite(maxRaw)
-      ? Math.max(8, Math.min(400, Math.floor(maxRaw)))
+      ? Math.max(8, Math.min(CCTV_MAX_SOURCES_CEILING, Math.floor(maxRaw)))
       : DEFAULT_NYC_MAX_SOURCES;
     const prioritized = prioritizeSources(cameras, maxCount, NYC_ANCHORS);
     console.log(
@@ -3622,7 +3622,7 @@ export async function loadTorontoSourcesFromOpenData() {
       process.env.CCTV_TORONTO_MAX_SOURCES || DEFAULT_TORONTO_MAX_SOURCES,
     );
     const maxCount = Number.isFinite(maxRaw)
-      ? Math.max(8, Math.min(500, Math.floor(maxRaw)))
+      ? Math.max(8, Math.min(CCTV_MAX_SOURCES_CEILING, Math.floor(maxRaw)))
       : DEFAULT_TORONTO_MAX_SOURCES;
     const prioritized = prioritizeSources(cameras, maxCount, [
       TORONTO_DOWNTOWN,
@@ -3824,7 +3824,7 @@ export async function loadFloridaSourcesFromOpenData() {
       process.env.CCTV_FLORIDA_MAX_SOURCES || DEFAULT_FLORIDA_MAX_SOURCES,
     );
     const maxCount = Number.isFinite(maxRaw)
-      ? Math.max(8, Math.min(4200, Math.floor(maxRaw)))
+      ? Math.max(8, Math.min(CCTV_MAX_SOURCES_CEILING, Math.floor(maxRaw)))
       : DEFAULT_FLORIDA_MAX_SOURCES;
     const prioritized = prioritizeSources(cameras, maxCount, FLORIDA_ANCHORS);
     console.log(
