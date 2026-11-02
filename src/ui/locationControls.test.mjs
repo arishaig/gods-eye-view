@@ -191,6 +191,15 @@ test('location and POI keys route once while form controls retain typing', () =>
   f.controls.reset();
   assert.deepEqual(f.calls, [['poi', 'a', 1], ['reset']]);
 });
+test('a POI key another handler already claimed does not route a landmark', () => {
+  const f = fixture();
+  f.doc.fire('keydown', {
+    key: 'W',
+    defaultPrevented: true,
+    target: { matches: () => false },
+  });
+  assert.deepEqual(f.calls, []);
+});
 test('typing clears a failed search error and closing the emptied field drops it too', () => {
   const f = fixture();
   f.elements.search.value = 'Pariss';
