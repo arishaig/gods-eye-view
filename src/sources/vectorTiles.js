@@ -464,7 +464,7 @@ export function createVectorTileSource({
             },
             !sharedOwnership,
           );
-} catch (error) {
+        } catch (error) {
           // Some sparse extracts answer 404 for a tile with no features
           // rather than serving an empty one; decode those as empty.
           if (!emptyTileStatuses.includes(error.status)) throw error;
