@@ -1,4 +1,7 @@
-import { CCTV_SOURCE_FETCH_TIMEOUT_MS } from './constants.js';
+import {
+  CCTV_MAX_SOURCES_CEILING,
+  CCTV_SOURCE_FETCH_TIMEOUT_MS,
+} from './constants.js';
 import {
   cameraDisplayCode,
   fallbackHeadingFromId,
@@ -137,7 +140,7 @@ export async function loadLithuaniaSources() {
     }
     const rawCap = Number(process.env.CCTV_LITHUANIA_MAX_SOURCES || 400);
     const cap = Number.isFinite(rawCap)
-      ? Math.max(1, Math.min(1000, Math.floor(rawCap)))
+      ? Math.max(1, Math.min(CCTV_MAX_SOURCES_CEILING, Math.floor(rawCap)))
       : 400;
     const sources = prioritizeSources([...cameras.values()], cap, ANCHORS);
     console.log(

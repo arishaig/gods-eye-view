@@ -1,4 +1,7 @@
-import { CCTV_SOURCE_FETCH_TIMEOUT_MS } from './constants.js';
+import {
+  CCTV_MAX_SOURCES_CEILING,
+  CCTV_SOURCE_FETCH_TIMEOUT_MS,
+} from './constants.js';
 import {
   cameraDisplayCode,
   fallbackHeadingFromId,
@@ -233,7 +236,7 @@ function taiwanSourceCap() {
     process.env.CCTV_TAIWAN_MAX_SOURCES || DEFAULT_TAIWAN_MAX_SOURCES,
   );
   return Number.isFinite(rawCap)
-    ? Math.max(1, Math.min(2000, Math.floor(rawCap)))
+    ? Math.max(1, Math.min(CCTV_MAX_SOURCES_CEILING, Math.floor(rawCap)))
     : DEFAULT_TAIWAN_MAX_SOURCES;
 }
 
