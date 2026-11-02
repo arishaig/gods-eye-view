@@ -13,7 +13,7 @@ export const DEFAULT_AUSTIN_MAX_SOURCES = 250;
  * a zoomed-in client fetches them with a bbox query (see bbox.js). Sized above the sum of the
  * default per-pack caps so a default install never trims.
  */
-export const DEFAULT_CCTV_MAX_SOURCES = 6000;
+export const DEFAULT_CCTV_MAX_SOURCES = 4000;
 /** Hard upper bound for CCTV_MAX_SOURCES and for each per-pack
  * CCTV_<PACK>_MAX_SOURCES, so any one pack can be raised to load its whole
  * feed. */
