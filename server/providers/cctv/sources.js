@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {
+  CCTV_MAX_SOURCES_CEILING,
   DEFAULT_AUSTIN_ROWS_URL,
   DEFAULT_AUSTIN_MAX_SOURCES,
   AUSTIN_DOWNTOWN,
@@ -251,7 +252,7 @@ export async function loadAustinSourcesFromOpenData() {
       process.env.CCTV_AUSTIN_MAX_SOURCES || DEFAULT_AUSTIN_MAX_SOURCES,
     );
     const maxCount = Number.isFinite(maxRaw)
-      ? Math.max(8, Math.min(300, Math.floor(maxRaw)))
+      ? Math.max(8, Math.min(CCTV_MAX_SOURCES_CEILING, Math.floor(maxRaw)))
       : DEFAULT_AUSTIN_MAX_SOURCES;
     const prioritized = prioritizeSources(unique, maxCount, [AUSTIN_DOWNTOWN]);
     if (prioritized.length < unique.length) {
@@ -386,7 +387,7 @@ export async function loadCaltransSourcesFromOpenData() {
     process.env.CCTV_CALTRANS_MAX_SOURCES || DEFAULT_CALTRANS_MAX_SOURCES,
   );
   const maxCount = Number.isFinite(maxRaw)
-    ? Math.max(8, Math.min(600, Math.floor(maxRaw)))
+    ? Math.max(8, Math.min(CCTV_MAX_SOURCES_CEILING, Math.floor(maxRaw)))
     : DEFAULT_CALTRANS_MAX_SOURCES;
   const prioritized = prioritizeSources(cameras, maxCount, CALTRANS_ANCHORS);
   console.log(
@@ -469,7 +470,7 @@ export async function loadTflSourcesFromOpenData() {
       process.env.CCTV_TFL_MAX_SOURCES || DEFAULT_TFL_MAX_SOURCES,
     );
     const maxCount = Number.isFinite(maxRaw)
-      ? Math.max(8, Math.min(600, Math.floor(maxRaw)))
+      ? Math.max(8, Math.min(CCTV_MAX_SOURCES_CEILING, Math.floor(maxRaw)))
       : DEFAULT_TFL_MAX_SOURCES;
     const prioritized = prioritizeSources(cameras, maxCount, [LONDON_CENTER]);
     console.log(
@@ -660,7 +661,7 @@ export async function loadOntarioSourcesFromOpenData(
       env.CCTV_ONTARIO_MAX_SOURCES || DEFAULT_ONTARIO_MAX_SOURCES,
     );
     const maxCount = Number.isFinite(maxRaw)
-      ? Math.max(8, Math.min(1000, Math.floor(maxRaw)))
+      ? Math.max(8, Math.min(CCTV_MAX_SOURCES_CEILING, Math.floor(maxRaw)))
       : DEFAULT_ONTARIO_MAX_SOURCES;
     const prioritized = prioritizeSources(unique, maxCount, ONTARIO_ANCHORS);
     console.log(
@@ -794,7 +795,7 @@ export async function loadFintrafficSourcesFromOpenData() {
       process.env.CCTV_FINTRAFFIC_MAX_SOURCES || DEFAULT_FINTRAFFIC_MAX_SOURCES,
     );
     const maxCount = Number.isFinite(maxRaw)
-      ? Math.max(8, Math.min(600, Math.floor(maxRaw)))
+      ? Math.max(8, Math.min(CCTV_MAX_SOURCES_CEILING, Math.floor(maxRaw)))
       : DEFAULT_FINTRAFFIC_MAX_SOURCES;
     const prioritized = prioritizeSources(cameras, maxCount, FINLAND_ANCHORS);
     console.log(
@@ -927,7 +928,7 @@ export async function loadDriveBcSourcesFromOpenData() {
     );
     // Up to the catalog ceiling, so a BC-only setup can load the whole province.
     const maxCount = Number.isFinite(maxRaw)
-      ? Math.max(8, Math.min(1200, Math.floor(maxRaw)))
+      ? Math.max(8, Math.min(CCTV_MAX_SOURCES_CEILING, Math.floor(maxRaw)))
       : DEFAULT_DRIVEBC_MAX_SOURCES;
     const prioritized = prioritizeSources(cameras, maxCount, DRIVEBC_ANCHORS);
     console.log(
@@ -1086,7 +1087,7 @@ export async function loadTxdotSourcesFromOpenData() {
     process.env.CCTV_TXDOT_MAX_SOURCES || DEFAULT_TXDOT_MAX_SOURCES,
   );
   const maxCount = Number.isFinite(maxRaw)
-    ? Math.max(8, Math.min(2000, Math.floor(maxRaw)))
+    ? Math.max(8, Math.min(CCTV_MAX_SOURCES_CEILING, Math.floor(maxRaw)))
     : DEFAULT_TXDOT_MAX_SOURCES;
   const prioritized = prioritizeSources(cameras, maxCount, TXDOT_ANCHORS);
   console.log(
@@ -1193,7 +1194,7 @@ export function loadTallinnSourcesFromCatalog({
     process.env.CCTV_TALLINN_MAX_SOURCES || DEFAULT_TALLINN_MAX_SOURCES,
   );
   const maxCount = Number.isFinite(maxRaw)
-    ? Math.max(8, Math.min(300, Math.floor(maxRaw)))
+    ? Math.max(8, Math.min(CCTV_MAX_SOURCES_CEILING, Math.floor(maxRaw)))
     : DEFAULT_TALLINN_MAX_SOURCES;
   const prioritized = prioritizeSources(unique, maxCount, [TALLINN_CENTER]);
   console.log(
@@ -1389,7 +1390,7 @@ export async function loadTarkteeSourcesFromDatex() {
       process.env.CCTV_TARKTEE_MAX_SOURCES || DEFAULT_TARKTEE_MAX_SOURCES,
     );
     const maxCount = Number.isFinite(maxRaw)
-      ? Math.max(8, Math.min(300, Math.floor(maxRaw)))
+      ? Math.max(8, Math.min(CCTV_MAX_SOURCES_CEILING, Math.floor(maxRaw)))
       : DEFAULT_TARKTEE_MAX_SOURCES;
     const prioritized = prioritizeSources(cameras, maxCount, TARKTEE_ANCHORS);
     console.log(
@@ -1562,7 +1563,7 @@ export async function loadNswSourcesFromOpenData() {
       process.env.CCTV_NSW_MAX_SOURCES || DEFAULT_NSW_MAX_SOURCES,
     );
     const maxCount = Number.isFinite(maxRaw)
-      ? Math.max(8, Math.min(900, Math.floor(maxRaw)))
+      ? Math.max(8, Math.min(CCTV_MAX_SOURCES_CEILING, Math.floor(maxRaw)))
       : DEFAULT_NSW_MAX_SOURCES;
     const prioritized = prioritizeSources(cameras, maxCount, [SYDNEY_CENTER]);
     console.log(
@@ -1754,7 +1755,7 @@ export async function loadCalgarySourcesFromOpenData() {
       process.env.CCTV_CALGARY_MAX_SOURCES || DEFAULT_CALGARY_MAX_SOURCES,
     );
     const maxCount = Number.isFinite(maxRaw)
-      ? Math.max(8, Math.min(400, Math.floor(maxRaw)))
+      ? Math.max(8, Math.min(CCTV_MAX_SOURCES_CEILING, Math.floor(maxRaw)))
       : DEFAULT_CALGARY_MAX_SOURCES;
     const prioritized = prioritizeSources(cameras, maxCount, [
       CALGARY_DOWNTOWN,
@@ -2334,7 +2335,7 @@ export async function loadDelDOTSourcesFromOpenData() {
       process.env.CCTV_DELDOT_MAX_SOURCES || DEFAULT_DELDOT_MAX_SOURCES,
     );
     const maxCount = Number.isFinite(maxRaw)
-      ? Math.max(8, Math.min(400, Math.floor(maxRaw)))
+      ? Math.max(8, Math.min(CCTV_MAX_SOURCES_CEILING, Math.floor(maxRaw)))
       : DEFAULT_DELDOT_MAX_SOURCES;
     const prioritized = prioritizeSources(unique, maxCount, DELDOT_ANCHORS);
     console.log(
@@ -2806,7 +2807,7 @@ export async function loadVegvesenSourcesFromOpenData() {
       process.env.CCTV_VEGVESEN_MAX_SOURCES || DEFAULT_VEGVESEN_MAX_SOURCES,
     );
     const maxCount = Number.isFinite(maxRaw)
-      ? Math.max(8, Math.min(1000, Math.floor(maxRaw)))
+      ? Math.max(8, Math.min(CCTV_MAX_SOURCES_CEILING, Math.floor(maxRaw)))
       : DEFAULT_VEGVESEN_MAX_SOURCES;
     const prioritized = prioritizeSources(cameras, maxCount, NORWAY_ANCHORS);
     await applyVegvesenGroundHeights(prioritized, {
