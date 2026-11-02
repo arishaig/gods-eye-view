@@ -25,6 +25,7 @@ import {
   loadKingCountySourcesFromOpenData,
   loadWsdotSourcesFromOpenData,
   loadVegvesenSourcesFromOpenData,
+  loadSeattleSourcesFromOpenData,
   loadNycSourcesFromOpenData,
   loadTorontoSourcesFromOpenData,
   loadFloridaSourcesFromOpenData,
@@ -133,6 +134,11 @@ const LIVE_PACKS = [
     name: 'vegvesen',
     enabled: () => envEnabled('CCTV_VEGVESEN_ENABLED'),
     load: loadVegvesenSourcesFromOpenData,
+  },
+  {
+    name: 'seattle',
+    enabled: () => envEnabled('CCTV_SEATTLE_ENABLED'),
+    load: loadSeattleSourcesFromOpenData,
   },
   {
     // NYC DOT requires a data-sharing agreement for this feed, so the pack is
