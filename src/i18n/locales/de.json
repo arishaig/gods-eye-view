@@ -2944,5 +2944,7 @@
   "UTILITIES": "WERKZEUGE",
   "Exit cockpit to fly to a drawing": "Cockpit verlassen, um zu einer Zeichnung zu fliegen",
   "Directions, drawing and your own files": "Route, Zeichnen und eigene Dateien",
-  "Flying to home view...": "Flug zur Startansicht..."
+  "Flying to home view...": "Flug zur Startansicht...",
+  "Fly mode: WASD move, Q/E turn, R/F climb, Shift faster. G or Esc exits": "Flugmodus: WASD bewegen, Q/E drehen, R/F steigen/sinken, Umschalt schneller. G oder Esc beendet",
+  "Fly mode off": "Flugmodus aus"
 }

@@ -84,6 +84,8 @@ export class LocationControls {
       const cityId = getExpandedCity();
       if (
         !cityId ||
+        // Another handler (keyboard fly mode) already took this key.
+        event.defaultPrevented ||
         event.target?.matches?.('select, input, textarea') ||
         event.target === elements.search
       )

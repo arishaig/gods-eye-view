@@ -3014,5 +3014,7 @@
   "UTILITIES": "STRUMENTI",
   "Exit cockpit to fly to a drawing": "Esci dal cockpit per volare a un disegno",
   "Directions, drawing and your own files": "Indicazioni, disegno e i tuoi file",
-  "Flying to home view...": "Volo verso la vista iniziale..."
+  "Flying to home view...": "Volo verso la vista iniziale...",
+  "Fly mode: WASD move, Q/E turn, R/F climb, Shift faster. G or Esc exits": "Modalità volo: WASD per muoversi, Q/E per ruotare, R/F per salire/scendere, Maiusc per accelerare. G o Esc per uscire",
+  "Fly mode off": "Modalità volo disattivata"
 }

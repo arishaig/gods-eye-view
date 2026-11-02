@@ -21,6 +21,7 @@ import { RadioControls } from './radio.js';
 import { LocalSdrControls } from './localSdrControls.js';
 import { LocationNavigation } from './locationNavigation.js';
 import { bindCameraOrientationControls } from './cameraOrientationControls.js';
+import { bindKeyboardFlight } from './keyboardFlight.js';
 import { createMapSourceControls } from './mapSource.js';
 import { STYLES } from './effects.js';
 import { isHudLayout } from '../hudLayouts.js';
@@ -594,6 +595,7 @@ export class StyleManager extends ShellFacade {
     this._initMobileShell();
     this._initShareButton();
     this._initCameraOrientationControls();
+    this._initKeyboardFlight();
     this._initClearSelectedLayersButton();
     this._initHUDToggle();
     this._initModels3dToggle();
@@ -1662,6 +1664,20 @@ export class StyleManager extends ShellFacade {
     this._cameraOrientationControls = controls;
   }
 
+  /** Wire held-key camera flight: arrows always, WASD in fly mode (G). */
+  _initKeyboardFlight() {
+    this._keyboardFlight?.destroy();
+    this._keyboardFlight = bindKeyboardFlight({
+      viewer: this.viewer,
+      beginFlight: () => this._navigation.beginKeyboardFlight(),
+      subscribeCameraHandoff: (listener) =>
+        this._navigation.subscribeCameraHandoff(listener),
+      holdContinuousRender: this.services.holdContinuousRender,
+      releaseContinuousRender: this.services.releaseContinuousRender,
+      showToast: (message) => this._showToast(message),
+    });
+  }
+
   // ── Share Button ─────────────────────────────
 
   /**
@@ -1801,6 +1817,7 @@ export class StyleManager extends ShellFacade {
     useDisplayStore(applicationPinia()).publishMapSource(null);
     this._cameraOrientationControls?.destroy();
     this._releaseGlobeActions();
+    this._keyboardFlight?.destroy();
     this._cctvControls?.destroy();
     this.services?.streetLevelLayer?.attachNavigation?.(null);
     this._streetLevelControls?.destroy();
