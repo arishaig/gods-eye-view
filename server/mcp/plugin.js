@@ -5,12 +5,15 @@
  * this machine, carry no proxy forwarding headers, arrive while sharing is
  * off, name a loopback host on the port they arrived at (blocking DNS
  * rebinding) and, when a browser sends an Origin, come from that same host.
+ * An authenticating proxy running beside the app can still reach it as a
+ * local client; GEV_PUBLIC_URL then gives the address links should name.
  */
 
 import { isSharingEnabled } from '../../src/keySetupCore.mjs';
 import { hasProxySignals } from '../../src/localRequestGate.mjs';
 import { createMcpHttpHandler } from '../../src/tools/mcp/index.js';
 import { createLocalMcpServer } from './server.js';
+import { isHttpUrl } from './services.js';
 
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 const LOOPBACK_ADDRESSES = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
@@ -58,15 +61,38 @@ export function isLocalMcpRequest({
   }
 }
 
+/**
+ * The address links to the app should name, from GEV_PUBLIC_URL, or
+ * undefined to name the address the request arrived at. A value that is not
+ * an http(s) URL is ignored with a warning.
+ */
+export function configuredPublicUrl(env = process.env, warn = console.warn) {
+  const value = String(env.GEV_PUBLIC_URL ?? '').trim();
+  if (!value) return undefined;
+  if (isHttpUrl(value)) return value;
+  warn(`GEV_PUBLIC_URL is not an http(s) URL and is ignored: ${value}`);
+  return undefined;
+}
+
 /** Vite plugin that mounts the local MCP server at /mcp. */
 export function localMcpPlugin({
   createServer = createLocalMcpServer,
   bodyTimeoutMs = BODY_TIMEOUT_MS,
+  publicUrl,
 } = {}) {
   const handlers = new Map();
   const handlerFor = (apiBase) => {
+    // Read on first request, like the provider keys, so .env is loaded.
     if (!handlers.has(apiBase))
-      handlers.set(apiBase, createMcpHttpHandler(createServer({ apiBase })));
+      handlers.set(
+        apiBase,
+        createMcpHttpHandler(
+          createServer({
+            apiBase,
+            publicUrl: publicUrl ?? configuredPublicUrl(),
+          }),
+        ),
+      );
     return handlers.get(apiBase);
   };
   const install = (server) => {

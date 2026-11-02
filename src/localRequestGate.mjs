@@ -76,7 +76,11 @@ function requestAuthority(hostHeader, protocol) {
  * to admit. Pure: no I/O, no globals.
  *
  * Policy, in order:
- *  1. any reverse-proxy / CDN signal header present (PROXY_SIGNALS) → 403;
+ *  1. any reverse-proxy / CDN signal header present (PROXY_SIGNALS) → 403,
+ *     unless `trustedProxy` says the socket peer is a reverse proxy the
+ *     operator named in GEV_TRUSTED_PROXIES. The caller then passes the
+ *     client-facing protocol and Host (from X-Forwarded-Proto/-Host) as
+ *     `protocol` and `hostHeader`, and rules 2 and 3 apply to them unchanged;
  *  2. `Sec-Fetch-Site` present and not `same-origin` / `none` → 403 (this is
  *     what blocks `<img src=...>` and cross-site navigation, which carry no
  *     Origin but do carry `Sec-Fetch-Site: cross-site`);
@@ -87,7 +91,7 @@ function requestAuthority(hostHeader, protocol) {
  *  4. otherwise ok. Non-browser loopback tools and the LAN opt-in (which may
  *     carry neither `Origin` nor `Sec-Fetch-Site`) pass here.
  *
- * @param {{hostHeader?: string, protocol?: string, origin?: string, secFetchSite?: string, proxyHeaders?: Record<string,string>}} req
+ * @param {{hostHeader?: string, protocol?: string, origin?: string, secFetchSite?: string, proxyHeaders?: Record<string,string>, trustedProxy?: boolean}} req
  * @returns {{ok: true} | {ok: false, status: 403, error: string}}
  */
 export function admitSameSiteRequest({
@@ -96,10 +100,12 @@ export function admitSameSiteRequest({
   origin,
   secFetchSite,
   proxyHeaders = {},
+  trustedProxy = false,
 } = {}) {
   // (1) A request carrying reverse-proxy / CDN forwarding headers did not
-  // originate on this machine, whatever its socket says.
-  if (hasProxySignals(proxyHeaders)) {
+  // originate on this machine, whatever its socket says — unless it came
+  // through a proxy the operator explicitly trusts.
+  if (trustedProxy !== true && hasProxySignals(proxyHeaders)) {
     return {
       ok: false,
       status: 403,

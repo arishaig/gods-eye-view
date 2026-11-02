@@ -6,6 +6,7 @@ import { localProviderPlugins } from '../providers/local.js';
 import { localMcpPlugin } from '../mcp/plugin.js';
 import { apiNotFoundPlugin } from './api-not-found.js';
 import { googleTokenUnavailablePlugin } from './google-token-unavailable.js';
+import { runtimeConfigPlugin } from './runtime-config.js';
 import { standaloneVoiceTools } from './voiceTools.js';
 import { unwatchedRuntimeDirsPlugin } from './unwatched-cache.js';
 
@@ -29,6 +30,7 @@ export function standaloneConfig(
         nominatimStorageDir,
       }),
       localMcpPlugin(),
+      runtimeConfigPlugin(),
       googleTokenUnavailablePlugin(),
       apiNotFoundPlugin(),
       unwatchedRuntimeDirsPlugin(),
