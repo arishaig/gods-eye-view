@@ -1,4 +1,5 @@
 import * as Cesium from 'cesium';
+import { t } from '../i18n/index.js';
 import {
   flightAxes,
   flightAxisForCode,
@@ -229,8 +230,10 @@ export function bindKeyboardFlight({
     if (announce)
       showToast?.(
         flyMode
-          ? 'Fly mode: WASD move, Q/E turn, R/F climb, Shift faster. G or Esc exits'
-          : 'Fly mode off',
+          ? t(
+              'Fly mode: WASD move, Q/E turn, R/F climb, Shift faster. G or Esc exits',
+            )
+          : t('Fly mode off'),
       );
     return flyMode;
   };

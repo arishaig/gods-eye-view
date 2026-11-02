@@ -3223,5 +3223,7 @@
   "Audio": "الصوت",
   "UTILITIES": "الأدوات",
   "Exit cockpit to fly to a drawing": "اخرج من القمرة للانتقال إلى رسم",
-  "Directions, drawing and your own files": "الاتجاهات والرسم وملفاتك الخاصة"
+  "Directions, drawing and your own files": "الاتجاهات والرسم وملفاتك الخاصة",
+  "Fly mode: WASD move, Q/E turn, R/F climb, Shift faster. G or Esc exits": "وضع الطيران: WASD للتحرك، Q/E للدوران، R/F للصعود والهبوط، Shift للتسريع. اضغط G أو Esc للخروج",
+  "Fly mode off": "وضع الطيران متوقف"
 }

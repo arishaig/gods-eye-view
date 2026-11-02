@@ -3013,5 +3013,7 @@
   "Audio": "Áudio",
   "UTILITIES": "UTILITÁRIOS",
   "Exit cockpit to fly to a drawing": "Saia da cabine para voar até um desenho",
-  "Directions, drawing and your own files": "Rotas, desenho e seus próprios arquivos"
+  "Directions, drawing and your own files": "Rotas, desenho e seus próprios arquivos",
+  "Fly mode: WASD move, Q/E turn, R/F climb, Shift faster. G or Esc exits": "Modo de voo: WASD move, Q/E gira, R/F sobe/desce, Shift acelera. G ou Esc sai",
+  "Fly mode off": "Modo de voo desativado"
 }

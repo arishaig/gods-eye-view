@@ -3083,5 +3083,7 @@
   "Right panels": "Правые панели",
   "UTILITIES": "ИНСТРУМЕНТЫ",
   "Exit cockpit to fly to a drawing": "Выйдите из кабины, чтобы перелететь к рисунку",
-  "Directions, drawing and your own files": "Маршруты, рисование и ваши файлы"
+  "Directions, drawing and your own files": "Маршруты, рисование и ваши файлы",
+  "Fly mode: WASD move, Q/E turn, R/F climb, Shift faster. G or Esc exits": "Режим полёта: WASD — движение, Q/E — поворот, R/F — подъём/спуск, Shift — быстрее. G или Esc — выход",
+  "Fly mode off": "Режим полёта выключен"
 }

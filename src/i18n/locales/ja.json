@@ -2873,5 +2873,7 @@
   "Audio": "オーディオ",
   "UTILITIES": "ユーティリティ",
   "Exit cockpit to fly to a drawing": "描画の位置へ移動するにはコックピットを終了してください",
-  "Directions, drawing and your own files": "ルート案内、描画、自分のファイル"
+  "Directions, drawing and your own files": "ルート案内、描画、自分のファイル",
+  "Fly mode: WASD move, Q/E turn, R/F climb, Shift faster. G or Esc exits": "飛行モード: WASDで移動、Q/Eで旋回、R/Fで上昇・下降、Shiftで加速。GまたはEscで終了",
+  "Fly mode off": "飛行モードをオフにしました"
 }

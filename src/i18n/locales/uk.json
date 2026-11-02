@@ -3083,5 +3083,7 @@
   "Audio": "Аудіо",
   "UTILITIES": "ІНСТРУМЕНТИ",
   "Exit cockpit to fly to a drawing": "Вийдіть із кабіни, щоб перелетіти до малюнка",
-  "Directions, drawing and your own files": "Маршрути, малювання та ваші файли"
+  "Directions, drawing and your own files": "Маршрути, малювання та ваші файли",
+  "Fly mode: WASD move, Q/E turn, R/F climb, Shift faster. G or Esc exits": "Режим польоту: WASD — рух, Q/E — поворот, R/F — підйом/спуск, Shift — швидше. G або Esc — вихід",
+  "Fly mode off": "Режим польоту вимкнено"
 }

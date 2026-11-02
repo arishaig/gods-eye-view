@@ -2873,5 +2873,7 @@
   "Right panels": "右側面板",
   "UTILITIES": "工具",
   "Exit cockpit to fly to a drawing": "請先退出座艙，再飛往繪製位置",
-  "Directions, drawing and your own files": "路線導航、繪製和你自己的文件"
+  "Directions, drawing and your own files": "路線導航、繪製和你自己的文件",
+  "Fly mode: WASD move, Q/E turn, R/F climb, Shift faster. G or Esc exits": "飛行模式：WASD 移動，Q/E 轉向，R/F 升降，Shift 加速。按 G 或 Esc 退出",
+  "Fly mode off": "飛行模式已關閉"
 }
