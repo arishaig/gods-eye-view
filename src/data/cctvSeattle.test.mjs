@@ -5,6 +5,7 @@ import {
   loadSeattleSourcesFromOpenData,
   normalizeSeattleImageUrl,
   seattleCameraToSource,
+  seattleTravelersToFeatures,
 } from '../../server/providers/cctv/sources.js';
 import {
   DEFAULT_SEATTLE_CCTV_URL,
@@ -51,9 +52,23 @@ const feature = (overrides = {}, geometry) => ({
   },
 });
 
+/** The Traveler feed for a list of test features: one pin per camera. */
 const collection = (features, extra = {}) => ({
-  type: 'FeatureCollection',
-  features,
+  Features: features.map((f) => {
+    const [lon, lat] = f.geometry?.coordinates ?? [];
+    const prefix = /^https?:\/\/www\.seattle\.gov\/trafficcams\/images\//;
+    return {
+      PointCoordinate: [lat, lon],
+      Cameras: [
+        {
+          Id: f.properties.UNITID,
+          Description: f.properties.LOCATION,
+          ImageUrl: String(f.properties.URL ?? '').replace(prefix, ''),
+          Type: f.properties.OWNERSHIP === 'SDOT' ? 'sdot' : 'wsdot',
+        },
+      ],
+    };
+  }),
   ...extra,
 });
 
@@ -231,29 +246,53 @@ test('the loader reads the keyless catalog, dedupes and orders by downtown', asy
   }
 });
 
-test('the default query asks for SDOT-owned, in-service cameras in WGS84', () => {
+test('the default URL is the keyless Traveler feed at its finest zoom', () => {
   const url = new URL(DEFAULT_SEATTLE_CCTV_URL);
-  assert.equal(url.hostname, 'services.arcgis.com');
-  assert.equal(
-    url.searchParams.get('where'),
-    "OWNERSHIP='SDOT' AND SERVSTAT='ACTV'",
-  );
-  assert.equal(url.searchParams.get('outSR'), '4326');
-  assert.equal(url.searchParams.get('f'), 'geojson');
+  assert.equal(url.hostname, 'web.seattle.gov');
+  assert.equal(url.pathname, '/Travelers/api/Map/Data');
+  assert.equal(url.searchParams.get('type'), '2');
+  assert.equal(url.searchParams.get('zoomId'), '17');
 });
 
-test('a truncated layer response is reported, not silently accepted', async (t) => {
-  t.mock.method(console, 'log', () => {});
-  const warnings = [];
-  t.mock.method(console, 'warn', (...args) => warnings.push(args.join(' ')));
-  t.mock.method(globalThis, 'fetch', async () =>
-    Response.json(
-      collection([feature()], { properties: { exceededTransferLimit: true } }),
-    ),
+test('the feed adapter keeps SDOT units, joins bare filenames to the City path and passes bad names through to the pin', () => {
+  const features = seattleTravelersToFeatures({
+    Features: [
+      {
+        PointCoordinate: [47.5611, -122.3868],
+        Cameras: [
+          {
+            Id: 'CMR-0038',
+            Description: '42nd Ave SW & SW Alaska St',
+            ImageUrl: '42_SW_Alaska.jpg',
+            Type: 'sdot',
+          },
+          { Id: 'WS-1', Description: 'I-5', ImageUrl: 'x.jpg', Type: 'wsdot' },
+          {
+            Id: 'CMR-0093',
+            Description: 'California Ave SW',
+            ImageUrl: '../../etc/passwd',
+            Type: 'sdot',
+          },
+        ],
+      },
+      { PointCoordinate: [47.6, -122.3], Cameras: null },
+      null,
+    ],
+  });
+  assert.equal(features.length, 2, 'the WSDOT unit and the empty pin drop');
+  assert.deepEqual(features[0].geometry.coordinates, [-122.3868, 47.5611]);
+  assert.equal(features[0].properties.UNITID, 'CMR-0038');
+  assert.equal(
+    features[0].properties.URL,
+    `${SEATTLE_IMAGE_ORIGIN}42_SW_Alaska.jpg`,
   );
-  const cameras = await loadSeattleSourcesFromOpenData();
-  assert.equal(cameras.length, 1, 'the rows that did arrive still load');
-  assert.ok(warnings.some((w) => /truncated/.test(w)));
+  assert.equal(seattleCameraToSource(features[0]).id, 'sdot-cmr-0038');
+  assert.equal(
+    seattleCameraToSource(features[1]),
+    null,
+    'a traversal filename never becomes a source',
+  );
+  assert.deepEqual(seattleTravelersToFeatures(null), []);
 });
 
 test('CCTV_SEATTLE_MAX_SOURCES caps the pack, nearest downtown first', async (t) => {

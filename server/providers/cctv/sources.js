@@ -2838,7 +2838,7 @@ export async function loadVegvesenSourcesFromOpenData() {
  * the Calgary and TfL packs apply. That includes the occasional hand-edited
  * row whose URL field is not a URL at all ("URL\thttps://…").
  *
- * @param {string|null|undefined} raw - `URL` from the layer.
+ * @param {string|null|undefined} raw - `URL` built from the feed's `ImageUrl`.
  * @returns {?string} Pinned HTTPS URL, or null when unusable.
  */
 export function normalizeSeattleImageUrl(raw) {
@@ -2854,6 +2854,44 @@ export function normalizeSeattleImageUrl(raw) {
   parsed.protocol = 'https:';
   const upgraded = parsed.toString();
   return upgraded.startsWith(SEATTLE_IMAGE_ORIGIN) ? upgraded : null;
+}
+
+/**
+ * The Traveler feed -> the feature shape `seattleCameraToSource` reads.
+ *
+ * The feed groups cameras by map pin: `Features[].PointCoordinate` is
+ * `[lat, lon]` and `Cameras[]` holds the units at that pin, each with an `Id`
+ * ("CMR-0112"), a `Description`, a bare `ImageUrl` filename and a `Type`
+ * ("sdot" or "wsdot"). Only SDOT-owned units are kept. A filename that is not a
+ * plain `.jpg` name is passed on as-is so the pin in `normalizeSeattleImageUrl`
+ * refuses it rather than this adapter guessing.
+ *
+ * @param {object} payload - Parsed JSON from the feed.
+ * @returns {Array<object>} GeoJSON-like features.
+ */
+export function seattleTravelersToFeatures(payload) {
+  const features = [];
+  for (const pin of Array.isArray(payload?.Features) ? payload.Features : []) {
+    const lat = toFiniteNumber(pin?.PointCoordinate?.[0]);
+    const lon = toFiniteNumber(pin?.PointCoordinate?.[1]);
+    for (const cam of Array.isArray(pin?.Cameras) ? pin.Cameras : []) {
+      if (String(cam?.Type ?? '').toLowerCase() !== 'sdot') continue;
+      const file = String(cam?.ImageUrl ?? '').trim();
+      features.push({
+        geometry: { type: 'Point', coordinates: [lon, lat] },
+        properties: {
+          UNITID: cam?.Id,
+          OWNERSHIP: 'SDOT',
+          SERVSTAT: 'ACTV',
+          LOCATION: cam?.Description,
+          URL: /^[A-Za-z0-9_.-]+\.jpe?g$/i.test(file)
+            ? `${SEATTLE_IMAGE_ORIGIN}${file}`
+            : file,
+        },
+      });
+    }
+  }
+  return features;
 }
 
 /**
@@ -2931,8 +2969,8 @@ export function seattleCameraToSource(feature) {
 }
 
 /**
- * Fetch City of Seattle (SDOT) traffic cameras from the City's keyless ArcGIS
- * open-data layer. Frames are stills on www.seattle.gov.
+ * Fetch City of Seattle (SDOT) traffic cameras from the City's keyless
+ * Traveler Information JSON feed. Frames are stills on www.seattle.gov.
  *
  * @returns {Promise<Array<object>>} Normalized camera source objects.
  */
@@ -2940,7 +2978,7 @@ export async function loadSeattleSourcesFromOpenData() {
   try {
     const endpoint = process.env.CCTV_SEATTLE_URL || DEFAULT_SEATTLE_CCTV_URL;
     const resp = await fetch(endpoint, {
-      headers: { Accept: 'application/geo+json,application/json' },
+      headers: { Accept: 'application/json' },
       redirect: 'manual',
       signal: AbortSignal.timeout(CCTV_SOURCE_FETCH_TIMEOUT_MS),
     });
@@ -2968,18 +3006,7 @@ export async function loadSeattleSourcesFromOpenData() {
       resp,
       SEATTLE_MAX_CATALOG_BYTES,
     );
-    // ArcGIS truncates a query at the layer's maxRecordCount (2,000) and says
-    // so rather than paging; the city is ~400 rows, so this only fires if the
-    // layer grows past it, and then it should be loud, not silent.
-    if (
-      payload?.exceededTransferLimit ||
-      payload?.properties?.exceededTransferLimit
-    ) {
-      console.warn(
-        '[CCTV] Seattle catalog was truncated by the layer record limit',
-      );
-    }
-    const features = Array.isArray(payload?.features) ? payload.features : [];
+    const features = seattleTravelersToFeatures(payload);
     const cameras = [];
     const seen = new Set();
     for (const feature of features) {

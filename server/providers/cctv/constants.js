@@ -268,14 +268,17 @@ export const CALGARY_DOWNTOWN = { lat: 51.0461, lon: -114.0626 };
  * body cannot be buffered without limit. */
 export const CALGARY_MAX_CATALOG_BYTES = 4 * 1024 * 1024;
 
-/** City of Seattle (SDOT) traffic cameras: the City's keyless ArcGIS open-data
- * layer, one GeoJSON query for the whole city. The layer also lists the WSDOT
- * highway cameras inside city limits; the query keeps SDOT-owned, in-service
- * rows only, so this pack never duplicates a state highway pack. */
+/** City of Seattle (SDOT) traffic cameras: the keyless JSON feed behind the
+ * City's own Traveler Information map (web.seattle.gov/Travelers), one request
+ * for the whole city. The feed also lists the WSDOT highway cameras inside
+ * city limits (`Type: "wsdot"`); only `Type: "sdot"` rows are kept, so this
+ * pack never duplicates the WSDOT pack. (The City's ArcGIS camera layers
+ * stopped being keyless in 2026-10 and no longer carry the frame filename.)
+ * zoomId 17 is the finest level and returns every camera. */
 export const DEFAULT_SEATTLE_CCTV_URL =
-  "https://services.arcgis.com/ZOyb2t4B0UYuYNYH/arcgis/rest/services/Traffic_Cameras_CDL/FeatureServer/0/query?where=OWNERSHIP%3D'SDOT'%20AND%20SERVSTAT%3D'ACTV'&outFields=UNITID,LOCATION,URL,SERVSTAT,OWNERSHIP&outSR=4326&f=geojson";
-/** The only origin Seattle camera frames may come from. Most rows publish
- * `http://`; the host serves HTTPS, so URLs are upgraded and then pinned here
+  'https://web.seattle.gov/Travelers/api/Map/Data?zoomId=17&type=2';
+/** The only origin Seattle camera frames may come from. The feed publishes
+ * bare filenames; they are joined to this HTTPS directory and pinned to it
  * before registration. */
 export const SEATTLE_IMAGE_ORIGIN =
   'https://www.seattle.gov/trafficcams/images/';
