@@ -188,6 +188,13 @@ state restoration, and release them after the consumers stop. The catalog
 constructor (`application/layers`) also requires `wind`, `weather` and
 `cyclones` sources with `getSnapshot` for the Weather layers, and owns the
 observed-history clock those layers share for the catalog's lifetime.
+A `weather` source may also supply decoded frames: an optional
+`getFrameImage({ product, time, size, bbox, signal })` returns a whole-extent or
+detail image and an optional `getFrameTile({ product, time, z, x, y, size,
+signal })` returns one tile or null for a transparent tile, each as an
+`ImageBitmap`, `ImageData`, canvas or `VideoFrame` of exactly the requested
+size, which the layer draws once and closes. Without them the layers read the
+image and tile routes (`WeatherFrameFeed` in `src/layers/weather/source.js`).
 
 `application/services` accepts boundary, terrain, regional-context, weather and
 summary services; its weather service supplies cockpit local conditions, not the
@@ -217,7 +224,9 @@ leaving out `command-dock` the voice control and its pointer reticle;
 leaving out `context` the Bhote Koshi reconstruction panel; and leaving out
 `intel-hud` the Intel HUD overlay (`#intel-hud`), whose readouts the HUD
 implementation publishes to the `gev-hud` store. An unknown
-view name is an error. A host that does not initialize Core's locale passes
+view name is an error. An application that offers its own language choice
+starts and switches the language with the `./i18n` entry (`startPageLocale`,
+`followPageLocale`, `switchLocale`; see [I18N.md](./I18N.md)) and passes
 `localePicker: false` to `createApplicationControls` instead of editing the
 markup. Node tests that import application modules register the component
 loader with `node --import=<core package>/build/register-vue`.

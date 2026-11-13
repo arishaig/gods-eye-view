@@ -77,6 +77,7 @@ export function createCctvLayer({ services, source }) {
       deriveCalBadge: parts.calibration.deriveCalBadge,
       computeFrustumGeometry: parts.geometry.computeFrustumGeometry,
       activationProbeClampRange: parts.geometry.activationProbeClampRange,
+      flatGroundAxisDistance: parts.geometry.flatGroundAxisDistance,
       frameSignatureFromPixels: parts.frames.frameSignatureFromPixels,
       _createCctvProjectionPlaneForTest:
         parts.testing._createCctvProjectionPlaneForTest,
@@ -116,6 +117,8 @@ export function createCctvLayer({ services, source }) {
       _setCctvCoverageStateForTest: parts.testing._setCctvCoverageStateForTest,
       focusCctvRecord: parts.navigation.focusCctvRecord,
       maybeAutoHop: parts.navigation.maybeAutoHop,
+      openingCameraId: parts.navigation.openingCameraId,
+      reopenNearestCamera: parts.navigation.reopenNearestCamera,
       cctvCycleIndex: parts.navigation.cctvCycleIndex,
     },
   );

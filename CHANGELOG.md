@@ -15,6 +15,9 @@
 
 ## [Unreleased]
 
+- An application's own tool can take the pointer as Draw does, and its click
+  handlers can yield while a tool holds it, as the layers' do (`pointer` from
+  `createApplicationTools`) (samehkhamis, #1641).
 - Add the City of Seattle's SDOT traffic cameras as a CCTV pack. The camera
   list is one keyless request to the JSON feed behind the City's Traveler
   Information map, keeping SDOT units so the WSDOT highway cameras it also

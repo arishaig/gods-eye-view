@@ -35,6 +35,7 @@ import {
 } from './gevRealtime.js';
 import { createVoiceCostTracker } from './voiceCost.js';
 import { createTestVoiceUi } from '../testSupport/voiceUi.mjs';
+import { setLocale, t } from '../i18n/index.js';
 
 test('push-to-talk recognizes Space by code or key', () => {
   assert.equal(PUSH_TO_TALK_HOLD_DELAY_MS, 500);
@@ -591,41 +592,50 @@ test('replacement input invalidates an in-flight Radio preflight immediately', (
   assert.equal(controller.radioHandoffEpoch, priorEpoch + 1);
 });
 
-test('direct Radio pause or stop cancels a pending voice handoff', async () => {
-  const order = [];
-  let playbackControl = null;
-  const ui = createTestVoiceUi();
-  const controller = new GevRealtimeController({
-    ui,
-    runner: async () => ({ ok: true }),
-    radioLayer: {
-      subscribePlaybackControls(listener) {
-        playbackControl = listener;
-        return () => { playbackControl = null; };
+for (const [name, control, message] of [
+  ['direct Radio pause or stop cancels a pending voice handoff', 'stop', 'the explicit stop remains authoritative'],
+  [
+    'a direct Radio Next that does not play cancels a pending voice handoff',
+    { action: 'select', origin: 'user', attemptId: null },
+    'the user selection is not overridden by voice playback',
+  ],
+]) {
+  test(name, async () => {
+    const order = [];
+    let playbackControl = null;
+    const ui = createTestVoiceUi();
+    const controller = new GevRealtimeController({
+      ui,
+      runner: async () => ({ ok: true }),
+      radioLayer: {
+        subscribePlaybackControls(listener) {
+          playbackControl = listener;
+          return () => { playbackControl = null; };
+        },
+        playForVoice: async () => {
+          order.push('radio-play');
+          return true;
+        },
+        stopPlayback: () => order.push('radio-stop'),
       },
-      playForVoice: async () => {
-        order.push('radio-play');
-        return true;
-      },
-      stopPlayback: () => order.push('radio-stop'),
-    },
-  });
-  controller.debugLog = () => {};
-  controller.dc = {
-    readyState: 'open',
-    send() {},
-    close() { order.push('voice-stop'); },
-  };
-  controller.pendingRadioPlaybackResult = { ok: true, radioPlaybackRequested: true };
+    });
+    controller.debugLog = () => {};
+    controller.dc = {
+      readyState: 'open',
+      send() {},
+      close() { order.push('voice-stop'); },
+    };
+    controller.pendingRadioPlaybackResult = { ok: true, radioPlaybackRequested: true };
 
-  playbackControl('stop');
-  await controller.handleRealtimeEvent({
-    data: JSON.stringify({ type: 'response.done', response: { status: 'completed' } }),
-  });
+    playbackControl(control);
+    await controller.handleRealtimeEvent({
+      data: JSON.stringify({ type: 'response.done', response: { status: 'completed' } }),
+    });
 
-  assert.equal(controller.pendingRadioPlaybackResult, null);
-  assert.deepEqual(order, [], 'the explicit stop remains authoritative');
-});
+    assert.equal(controller.pendingRadioPlaybackResult, null);
+    assert.deepEqual(order, [], message);
+  });
+}
 
 test('confirmed manual Radio playback closes active voice without stopping Radio', () => {
   const order = [];
@@ -887,6 +897,42 @@ test('Radio handoff waits for response.done so later multi-intent tools execute 
     'assistant-confirmation-requested',
     'radio-play',
     'voice-stop',
+  ]);
+});
+
+test('Realtime gives analyst siblings one authority group and a newer response a new group', async () => {
+  const groups = [];
+  const ui = createTestVoiceUi();
+  const controller = new GevRealtimeController({
+    ui,
+    runner: async (name, _args, options) => {
+      groups.push([name, options.authorityGroup]);
+      return { ok: true, action: name, count: 0, items: [] };
+    },
+  });
+  controller.debugLog = () => {};
+  controller.sendVisualContextIfUseful = async () => false;
+  controller.dc = { readyState: 'open', send() {}, close() {} };
+  const event = (payload) => ({ data: JSON.stringify(payload) });
+  for (const [responseId, callId] of [
+    ['response-1', 'analyst-a'],
+    ['response-1', 'analyst-b'],
+    ['response-2', 'analyst-c'],
+  ]) {
+    await controller.handleRealtimeEvent(
+      event({
+        type: 'response.function_call_arguments.done',
+        response_id: responseId,
+        call_id: callId,
+        name: 'analyst_query',
+        arguments: '{"layers":["flights"],"scope":{"kind":"anywhere"}}',
+      }),
+    );
+  }
+  assert.deepEqual(groups, [
+    ['analyst_query', 'response-1'],
+    ['analyst_query', 'response-1'],
+    ['analyst_query', 'response-2'],
   ]);
 });
 
@@ -3662,4 +3708,77 @@ test('voice runs app actions itself and other tools through the catalog', async 
   assert.deepEqual(resets, [['stopped']]);
   assert.deepEqual(disposals, [['removed']]);
   assert.equal(withToolCatalog(runner, undefined), runner);
+});
+
+test('the controller forwards viewport escalation diagnostics to its debug log', async () => {
+  const records = [];
+  const controller = new GevRealtimeController({
+    ui: createTestVoiceUi(),
+    runner: async () => ({ ok: true }),
+    radioLayer: { subscribePlaybackControls: () => () => {}, setVoiceDucked() {} },
+  });
+  controller.debugLog = (event, detail) => records.push({ event, detail });
+  controller.dc = { readyState: 'open', send() {}, close() {} };
+
+  assert.equal(
+    await controller.sendVisualContextIfUseful({
+      action: 'get_entity_context',
+      scene: { basemap: { viewScale: 'regional' } },
+    }),
+    false,
+  );
+  assert.deepEqual(
+    records.filter((record) => record.event.startsWith('viewport_context.')),
+    [{
+      event: 'viewport_context.decision',
+      detail: { contextId: 1, send: false, reason: 'view-scale-not-local', viewScale: 'regional' },
+    }],
+  );
+});
+
+test('a missing server key says where to add it, without the microphone hint, in every language', () => {
+  const ui = createTestVoiceUi();
+  const controller = new GevRealtimeController({
+    ui,
+    runner: async () => ({ ok: true }),
+    radioLayer: { subscribePlaybackControls: () => () => {}, setVoiceDucked() {} },
+  });
+  try {
+    controller.reportError(
+      'Realtime connection',
+      Object.assign(new Error('OPENAI_API_KEY is not set'), { code: 'API_KEY_MISSING' }),
+    );
+    assert.equal(ui.state.error.text, 'Needs OPENAI_API_KEY — add it in Provider Settings');
+    assert.equal(ui.state.error.hint, false);
+
+    setLocale('es');
+    assert.notEqual(ui.state.error.text, 'Needs OPENAI_API_KEY — add it in Provider Settings');
+    assert.match(ui.state.error.text, /OPENAI_API_KEY/);
+    assert.equal(ui.state.error.hint, false);
+    setLocale('en');
+
+    controller.reportError('Realtime connection', new Error('ICE failed'));
+    assert.match(ui.state.error.text, /ICE failed/);
+    assert.equal(ui.state.error.hint, true);
+  } finally {
+    setLocale('en');
+  }
+});
+
+test('a status from a shared helper is worded again after a language change', () => {
+  const ui = createTestVoiceUi();
+  const controller = new GevRealtimeController({
+    ui,
+    runner: async () => ({ ok: true }),
+    radioLayer: { subscribePlaybackControls: () => () => {}, setVoiceDucked() {} },
+  });
+  try {
+    controller.setStatus('listening', 'Radio did not start');
+    assert.equal(ui.state.detail.text, 'Radio did not start');
+    setLocale('es');
+    assert.equal(ui.state.detail.text, t('Radio did not start'));
+    assert.notEqual(ui.state.detail.text, 'Radio did not start');
+  } finally {
+    setLocale('en');
+  }
 });
